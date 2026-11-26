@@ -152,3 +152,18 @@ if (OpenCV_FOUND)
     target_compile_definitions(layer0_key_probe PRIVATE BIFROST_HAS_OPENCV)
     target_link_libraries(layer0_key_probe PRIVATE ${OpenCV_LIBS})
 endif()
+
+add_executable(layer1_switch_probe
+    tools/layer1_switch_probe.cpp
+    src/loa/interfaces/game_menu.cpp
+    src/bf/targetting/screen.cpp
+    src/bf/vision/vision_engine.cpp
+    src/bf/streaming/stream_bridge.cpp
+    src/loa/game/io_backend.cpp
+)
+target_include_directories(layer1_switch_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(layer1_switch_probe PRIVATE user32 gdi32)
+if (OpenCV_FOUND)
+    target_compile_definitions(layer1_switch_probe PRIVATE BIFROST_HAS_OPENCV)
+    target_link_libraries(layer1_switch_probe PRIVATE ${OpenCV_LIBS})
+endif()

@@ -1,63 +1,44 @@
-# Layer 1 Porting Plan (`docs/re/layer1_plan.md`) — Read-Only
+# Layer 1+ Evidence-Only Plan (`docs/re/layer1_plan.md`)
 
-Source: `review_bundle/recon/interfaces.md` (595 binary functions across `common / activity / exchange_mail / stronghold interfaces`) + `docs/re/game_menu.md`.  
-Prerequisite: `base_interface::open` (`0x14035e840`) — **ported**.
-
----
-
-## 1. Interface Inventory (from `recon/interfaces.md`)
-
-| Interface Class | Ctor / `is_open` / `open` Anchors | Vtable Slots | Activities Using It (`[INFERRED]` unless noted) | Templates (`.rsrc` / `0x1405e...`) | Hotkey | Dependencies |
-|---|---|---|---|---|---|---|
-| `base_interface` | `0x14035e290` / pure / `0x14035e840` | 4 | All `base_interface` subclasses (`[CONFIRMED]`) | None (delegated to `is_open`) | `this + 0x28` | `io_backend`, `spdlog` |
-| `game_menu` | `0x14038af20` / `0x14038d7d0` / `0x14035e840` | 32 funcs | `cycler_scheduler`, all activities (`[CONFIRMED]`) | `game_menu.png`, `connected.png`, `connecting.png`, `combat_blocked.png` | `"esc"` (`DAT_1405d5100`) | `base_interface`, `character_select::is_open`, `screen`, `vision_engine` |
-| `character_select` | `0x1403d60a0` / `0x1403d6500` / `0x14035e840` | 4 | `game_menu::switch_to` (`[CONFIRMED]`) | `launch.png` (`0x1405f1ab0`) | None (via `game_menu`) | `base_interface`, `screen`, `vision_engine` |
-| `item_repair` | `0x14037cbb0` / `0x14037cdf0` / `0x140053da0` | ~5 funcs | `kurzan_front`, `guardian_raid`, `paradise` | `0x1405ea2b0` | Pet/NPC repair | `screen`, `vision_engine`, `io_backend` |
-| `tool_repair` | `0x14037d2d0` / `0x14037d5c0` / `0x140053da0` | ~5 funcs | `off_the_hook` (fishing) | `0x1405ecb90` | Repair interact | `screen`, `vision_engine`, `io_backend` |
-| `resurrect_prompt` | `0x1403a3850` / `0x1403a3ae0` / `0x140053da0` | ~4 funcs | `kurzan_front`, `guardian_raid`, `ebony_cube` | `0x1405ea6d0` | Click prompt | `screen`, `vision_engine`, `io_backend` |
-| `aura_recovery` | `0x1403cdb20` / `0x1403ce490` / `0x14035e840` | ~4 funcs | `kurzan_front`, `guardian_raid`, `ebony_cube` | `0x1405eb690` | Pet / Aura | `base_interface`, `screen`, `vision_engine` |
-| `pet_collection` | `0x14037d8d0` / `0x140380020` / `0x1403800d0` | ~14 funcs | `item_repair`, `aura_recovery`, `kurzan_front` | `0x1405eb690`, `0x1405f1fa0` | Pet hotkey | `screen`, `vision_engine`, `io_backend` |
-| `express_mail` | `0x1402066d0` / `0x14038a5a0` / `0x14038a5c0` | ~4 funcs | `exchange_mail_funnel` | `0x1405ed070` | Pet mail | `screen`, `vision_engine`, `io_backend` |
-| `inventory` | `0x1403a5380` / `0x1403ab040` / `0x14035e840` | 4 | `exchange_mail_funnel`, `kurzan_front` | `0x1405ead30`, `0x1405eb3f0` | `"i"` (`[INFERRED]`) | `base_interface`, `screen`, `vision_engine` |
-| `item_storage` | `0x1403ad270` / `0x1403ad4e0` / `0x14035e840` | 4 | `exchange_mail_funnel` | `0x1405eb3f0` | NPC / Pet | `base_interface`, `storage<100>` |
-| `guild` | `0x1403aedb0` / `0x1403b35f0` / `0x1403b38c0` | 4 | `unas_guild_dispatch` | `0x1405ea430`, `0x1405eb690` | `"alt+u"` (`[INFERRED]`) | `base_interface`, `tab_button` |
-| `unas_tasks` | `0x140400db0` / `0x140401940` / `0x14035e840` | 4 | `unas_guild_dispatch` | `0x1405eb690` | `"alt+j"` (`[INFERRED]`) | `base_interface`, `tab_button` |
-| `bifrost` | `0x1403d0740` / `0x140376f30` / `0x14035e840` | 4 | `unas_guild_dispatch`, `off_the_hook`, `stronghold` | Shared `0x140376f30` | `"alt+w"` (`[INFERRED]`) | `base_interface`, `screen`, `vision_engine` |
-| `content_list` / `content_guide` | `0x140400030` / `0x140400550` / `0x14035e840` | 4 | `kurzan_front`, `guardian_raid`, `ebony_cube` | `0x1405eb690`, `0x1405ea8b0` | `"alt+q"` (`[INFERRED]`) | `base_interface`, `i_content_manager` |
-| `kurzan_front` | `0x1403ce540` / `0x140376f30` / `0x14035e840` | 4 | `kurzan_front` | Shared `0x140376f30` | Via `content_list` | `base_interface`, `content_list` |
-| `guardian_raid` | `0x14039ede0` / `0x1403a0db0` / `0x14035e840` | 4+1 | `guardian_raid` | `guardian_button` | Via `content_list` | `base_interface`, `tab_button` |
-| `the_cube` | `0x1403dc0a0` / `0x1403de9f0` / `0x14035e840` | 4 | `ebony_cube` | `0x1405eb150`, `0x1405f0190` | Via `content_list` | `base_interface`, `screen`, `vision_engine` |
-| `haals` | `0x1403edd00` / `0x140376f30` / `0x14035e840` | 4 | `haals_hourglass` | Shared `0x140376f30` | Via `content_list` | `base_interface` |
-| `paradise` / `paradise_gear` | `0x1403e12f0` / `0x1403e5860` / `0x14035e840` | 4+4 | `paradise` | `0x1405e9110` | Via `content_list` | `base_interface`, `tab_button` |
-| `npc_exchange` / `solo_exchange_shop` | `0x1403faef0` / `0x1403ffbe0` / `0x14035e840` | 4 | `exchange_mail_funnel`, `guardian_raid` | `0x1405ea430`, `0x1405f0eb0` | NPC interact | `base_interface`, `tab_button` |
-| `solo_raid_panel` | `0x140344170` / `0x1403469a0` / `0x14035e840` | 4 | `paradise` / solo raids | `0x1405eb690` | Via `content_list` | `base_interface` |
-| Stronghold (`pet_ranch`, `dispatch_station`, `farm`, `training_camp`, `crafting_workshop`) | `0x1403b65c0..0x1403c2c10` / `0x14035e840` | 4 each | `stronghold_interfaces` | `0x1405e8ed0`, `0x1405eb210`, `0x1405ee450` | Stronghold UI | `base_interface`, `tab_button` |
-| Utility (`chat`, `quest_journal`, `waymark_missions`, `combat_skills`, `ark_passive`, `friends`, `main_menu`, `login_event`, `settings`, `sheet_music`, `interact`, `world_map`, `war_map`, `minimap`, `overlay_minimap`) | `0x140357590..0x140402460` | 4 each | Cross-cutting / navigation | `0x1405f1c30`, `0x1405eb090`, `0x1405eb330` | Various | `base_interface`, `screen`, `vision_engine` |
-
-*(Plus 12 exception types such as `failed_to_open`, `failed_to_close`, `already_on_character`, `out_of_tickets`, and 3 UI components: `tab_button`, `checkbox`, `radiobutton`.)*
+All facts below come strictly from `coverage_vs_binary.md`, `review_bundle/recon/*.md`, `game_menu_decompiled.txt`, `fishing_clean.txt`, `section2_features_decompiled.txt`, `section2_rest_decompiled.txt`, `remaining_interfaces_decompiled.txt`, and `dump_355de0_hotkey.txt`.  
+No `[INFERRED]` hotkeys or guessed activity mappings are included; unrecovered items are marked `[UNKNOWN — not yet decompiled]`.
 
 ---
 
-## 2. Ranking & First Two Recommended Interfaces
+## 1. Interface Hotkeys Confirmed from Constructors (`FUN_14035e290`)
 
-Ranked by **smallest scope + highest reuse across activities**:
-1. **`game_menu` + `character_select::is_open`** — **100% already decompiled** (`docs/re/game_menu.md`), all 5 templates extracted and validated on live Moonlight (`0.93` / `0.812` / `0.725`). Only remaining Layer 1 step is inheriting `base_interface` and ensuring `game_menu.cpp` matches every branch of `0x14038ae20..0x1403921a0`.
-2. **`item_repair` (`0x14037cbb0`)** (tied with `resurrect_prompt` `0x1403a3850`) — only ~4–5 small functions (`222 B` ctor, `131 B` `is_open`, `1103 B` repair action), uses 1 template (`0x1405ea2b0`), and is needed by almost every combat activity (`kurzan_front`, `guardian_raid`, `paradise`, `haals_hourglass`).
+| Interface | Ctor Address | `FUN_14035e290` `param_4` (Hotkey) | Evidence |
+|---|---|---|---|
+| `game_menu` | `0x14038af20` | `&DAT_1405d5100` (`"esc"`) | `game_menu_decompiled.txt:131` |
+| `item_repair` | `0x14037cbb0` | `&DAT_1405d5100` | `section2_features_decompiled.txt:6110` |
+| `aura_recovery` | `0x1403cdb20` | `&DAT_1405d5100` | `section2_features_decompiled.txt:6143` |
+| `resurrect_prompt` | `0x1403a3850` | `0` (no hotkey) | `section2_features_decompiled.txt:6210` |
+| `overlay_minimap` | `0x140357590` | `&DAT_1405d3a40` | `game_menu_decompiled.txt:8300` |
+| All other interfaces | `recon/interfaces.md` | `[UNKNOWN — constructor not yet decompiled]` | — |
 
 ---
 
-## 3. Knowns vs Unknowns for Recommended #1 & #2
+## 2. Activity Evidence Matrix (8 Activities)
 
-### #1 `game_menu` (`0x14038ae20..0x1403921a0`) + `character_select::is_open` (`0x1403d6500`)
-- **`is_open()` ROI / template / threshold / timeout**:
-  - `game_menu::is_open` (`0x14038d7d0`): ROI `(1010, 280, 76, 62)`, `assets/templates/game_menu.png`, `TM_CCOEFF_NORMED`, threshold `0.70`, `base_interface::open` `60 s` / `8 s` (`100 ms` poll).
-  - `character_select::is_open` (`0x1403d6500`): ROI `(802, 877, 154, 39)`, `assets/templates/launch.png`, `TM_CCOEFF_NORMED`, threshold `0.70`.
-- **Still unknown**: None for `game_menu` (`32/32` functions decompiled). Live Moonlight test still needed for `combat_blocked.png`, `launch.png`, and `is_loading_screen()`.
+| Activity | `0x14035e840` (`open`) Callers in Range | `base_character` Calls Observed | `classes` / `identities` Needed | `.rsrc` Templates (`0x1405e...`/`0x1405f...`) | Binary Funcs Still to Recover (`coverage_vs_binary.md`) |
+|---|---|---|---|---|---|
+| **`off_the_hook`** (`0x1403d3c40..0x1403d5820`) | `0` direct calls to `0x14035e840` | `0x14036d5d0` (`fish`), `0x140365950`, `0x14037bf90` | **None** (`0` calls in `fishing_clean.txt`) | `0x1405e83f0` (at `0x1403d5760`) + `6` PNGs noted in `recon/off_the_hook.md` | **17** (`19` total, `2` partial, `17` not ported) |
+| **`guardian_raid`** (`0x14039ede0..0x1403a0fb0`, `0x1403c53f0..0x1403c9240`) | `guardian_raid::vtable` slot `+0x18` = `0x14035e840` | `[UNKNOWN — not yet decompiled]` | `[UNKNOWN — not yet decompiled]` | `0x1405e8ed0`, `0x1405e8ff0`, `0x1405ea130`, `0x1405ea250`, `0x1405ea310`, `0x1405eac10`, `0x1405eadf0`, `0x1405eafd0`, `0x1405eb2d0` (`9` refs) | **28** (`29` total, `1` partial, `28` not ported) |
+| **`cycler_scheduler`** (`0x140205700..0x14020e6f0`) | Calls `game_menu::switch_to` (`0x140391180`, which calls `0x14035e840`) | `[UNKNOWN — not yet decompiled]` | None directly (orchestrates activities) | `0x1405eb030` (at `0x14020a300`) | **48** (`53` total, `5` partial, `48` not ported) |
+| **`kurzan_front`** (`0x140299230..0x1402aa2c0`, `0x1403ce540..0x1403d0740`) | `kurzan_front::vtable` slot `+0x18` = `0x14035e840` | `[UNKNOWN — not yet decompiled]` | `[UNKNOWN — not yet decompiled]` | `0x1405e8f90`, `0x1405eb030`, `0x1405ee450`, `0x1405efe30`, `0x1405f1fa0` (`5` refs) | **85** (`85` total, `0` ported) |
+| **`ebony_cube`** (`0x1402aa2c0..0x1402c5840`, `0x1403dc0a0..0x1403df4b0`) | `0x1402ad090`, `0x1402c4840` | `[UNKNOWN — not yet decompiled]` | `[UNKNOWN — not yet decompiled]` | `0x1405ea850`, `0x1405eab50`, `0x1405eb690`, `0x1405eec30`, `0x1405ef470`, `0x1405ef8f0` (`6` refs) | **106** (`110` total, `4` partial, `106` not ported) |
+| **`haals_hourglass`** (`0x1402f0bb0..0x14030e760`, `0x1403edd00..0x1403eeb30`) | `haals::vtable` slot `+0x18` = `0x14035e840` | `[UNKNOWN — not yet decompiled]` | `[UNKNOWN — not yet decompiled]` | `0x1405ec7d0`, `0x1405ee450`, `0x1405ef350`, `0x1405ef470`, `0x1405f1fa0` (`5` refs) + `lucky.dh` | **173** (`183` total, `10` partial, `173` not ported) |
+| **`paradise`** (`0x1402c5840..0x1402f0bb0`, `0x1403e12f0..0x1403edd00`, `0x1404045d0..0x140408bd0`) | `0x1402d11c0`, `0x1403e8910` | `[UNKNOWN — not yet decompiled]` | `[UNKNOWN — not yet decompiled]` | `0x1405ea9d0`, `0x1405eb690`, `0x1405eca10` (`3` refs) | **370** (`373` total, `3` partial, `370` not ported) |
+| **`exchange_mail_funnel`** (`0x14020fdd0` + `interfaces`) | `0x14020fdd0` (3 calls to `0x14035e840`) | `[UNKNOWN — not yet decompiled]` | None expected (`[UNKNOWN — not yet decompiled]`) | `0x1405ed070`, `0x1405ead30`, `0x1405eb3f0`, `0x1405ea430`, `0x1405f0eb0` | Included in `570` unported `interfaces` funcs |
 
-### #2 `item_repair` (`0x14037cbb0`)
-- **Known from `recon/interfaces.md`**:
-  - Ctor `0x14037cbb0` (`222 B`), `is_open` `0x14037cdf0` (`131 B`), repair flow `0x14037ce80` (`1103 B`), string `"Item Repair"` / `"Failed to access item repair!"`, `.rsrc` template `0x1405ea2b0`.
-- **Still unknown (requires full decompile before porting)**:
-  - Exact `is_open()` ROI, threshold, and `matchTemplate` method inside `0x14037cdf0`.
-  - Exact button ROIs/pads/timeouts inside `0x14037ce80`.
-  - Extracted PNG bytes and dimensions of `0x1405ea2b0` from `.rsrc`.
+---
+
+## 3. Cheapest End-to-End Activity: `off_the_hook` (Fishing)
+
+- **Why cheapest:** Only **17** binary functions remaining in `off_the_hook` (`0x1403d3c40..0x1403d5820`), **0** `classes`/`identities` dependencies, and `0x1403d4090` + `0x14036d5d0` are already dumped in `fishing_clean.txt`.
+- **Exact work list for `off_the_hook` (no porting yet):**
+  1. Recover the 17 functions in `0x1403d3c40..0x1403d5820` (`0x1403d4090` state machine, `0x1403d54b0`, `0x1403d5760`, `0x1403d3c40`, `0x1403d3dc0`, `0x1403d3ee0`, lambdas).
+  2. Recover `base_character::fish` (`0x14036d5d0`), `0x140365950`, and `0x14037bf90` (`tool_repair` check).
+  3. Recover the fishing UI/helper callees (`0x1403816b0`, `0x1403828e0`, `0x140382c70`, `0x1403838f0`) and `tool_repair` (`0x14037d2d0..0x14037d670`).
+  4. Extract the `RT_RCDATA` PNG templates referenced by `off_the_hook` / `fishing` (`0x1405e83f0`, etc.) from `Bifrost.exe` `.rsrc`.
+  5. Verify template matching and state transitions via a non-destructive fishing probe on Moonlight before full execution.

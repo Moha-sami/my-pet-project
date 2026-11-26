@@ -371,7 +371,12 @@ void test_base_interface_open() {
     }
     REQUIRE(threw);
 
-    // Unresolvable hotkey fails immediately without waiting 60s
+    // Already-open interface with unresolvable hotkey returns immediately without throwing or touching keys
+    FakeInterface already_open_bad("Already Open", io, "no_such_key_xyz");
+    already_open_bad.open_state = true;
+    already_open_bad.open();
+
+    // Closed interface with unresolvable hotkey fails immediately when press is needed without waiting 60s
     FakeInterface bad_key("Bad Key", io, "no_such_key_xyz");
     const auto t0 = std::chrono::steady_clock::now();
     bool bad_threw = false;

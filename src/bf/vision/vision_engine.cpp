@@ -12,7 +12,9 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <mutex>
 #include <string_view>
+#include <unordered_map>
 
 #ifdef BIFROST_HAS_OPENCV
 #include <opencv2/imgcodecs.hpp>
@@ -308,6 +310,16 @@ void* try_load_dll(const std::filesystem::path& dir, const char* name) {
 
 } // namespace
 
+struct vision_engine::TemplateCache {
+#ifdef BIFROST_HAS_OPENCV
+    std::mutex mutex;
+    std::unordered_map<std::string, cv::Mat> entries;
+#endif
+};
+
+vision_engine::vision_engine()
+    : template_cache_(std::make_unique<TemplateCache>()) {}
+
 vision_engine::~vision_engine() {
 #ifdef BIFROST_HAS_TESSERACT
     if (tess_handle_) {
@@ -493,16 +505,36 @@ std::optional<loa::core::Point2i> vision_engine::find_color_centroid(
     };
 }
 
+// Source: 0x1403528c0 (TemplateMatcher::match) / 0x140353030 / 0x140353080
 std::optional<loa::core::Point2i> vision_engine::match_template(
     const loa::core::FrameBuffer& frame,
     const loa::core::Rect2i& roi,
     const std::string& template_path,
-    double threshold) const {
+    double threshold,
+    int method,
+    bool grayscale,
+    const loa::core::FrameBuffer* mask,
+    double* out_score) const {
+    if (out_score) {
+        *out_score = 0.0;
+    }
 #ifdef BIFROST_HAS_OPENCV
-    if (frame.empty()) {
+    if (frame.empty() || !template_cache_) {
         return std::nullopt;
     }
-    cv::Mat templ = cv::imread(template_path, cv::IMREAD_COLOR);
+    cv::Mat templ;
+    {
+        std::lock_guard<std::mutex> lock(template_cache_->mutex);
+        auto it = template_cache_->entries.find(template_path);
+        if (it != template_cache_->entries.end()) {
+            templ = it->second;
+        } else {
+            templ = cv::imread(template_path, cv::IMREAD_COLOR);
+            if (!templ.empty()) {
+                template_cache_->entries.emplace(template_path, templ);
+            }
+        }
+    }
     if (templ.empty()) {
         return std::nullopt;
     }
@@ -520,28 +552,70 @@ std::optional<loa::core::Point2i> vision_engine::match_template(
     if (roi.valid()) {
         cv_roi = cv::Rect(roi.x, roi.y, roi.width, roi.height) & cv_roi;
     }
+    if (cv_roi.width <= 0 || cv_roi.height <= 0) {
+        return std::nullopt;
+    }
     cv::Mat crop = bgr(cv_roi);
     if (crop.cols < templ.cols || crop.rows < templ.rows) {
         return std::nullopt;
     }
 
+    cv::Mat crop_proc;
+    cv::Mat templ_proc;
+    if (grayscale) {
+        cv::cvtColor(crop, crop_proc, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(templ, templ_proc, cv::COLOR_BGR2GRAY);
+    } else {
+        crop_proc = crop;
+        templ_proc = templ;
+    }
+
     cv::Mat result;
-    cv::matchTemplate(crop, templ, result, cv::TM_CCOEFF_NORMED);
+    if (mask && !mask->empty() && mask->width == templ.cols && mask->height == templ.rows) {
+        const int mask_type = (mask->channels == 1) ? CV_8UC1
+                            : (mask->channels == 4 ? CV_8UC4 : CV_8UC3);
+        cv::Mat raw_mask(mask->height, mask->width, mask_type,
+                         const_cast<std::uint8_t*>(mask->data.data()), mask->stride);
+        cv::Mat mask_gray;
+        if (mask->channels == 1) {
+            mask_gray = raw_mask;
+        } else if (mask->channels == 4) {
+            cv::cvtColor(raw_mask, mask_gray, cv::COLOR_BGRA2GRAY);
+        } else {
+            cv::cvtColor(raw_mask, mask_gray, cv::COLOR_BGR2GRAY);
+        }
+        cv::matchTemplate(crop_proc, templ_proc, result, method, mask_gray);
+    } else {
+        cv::matchTemplate(crop_proc, templ_proc, result, method);
+    }
+
+    double min_val = 0.0;
     double max_val = 0.0;
+    cv::Point min_loc;
     cv::Point max_loc;
-    cv::minMaxLoc(result, nullptr, &max_val, nullptr, &max_loc);
-    if (max_val < threshold) {
+    cv::minMaxLoc(result, &min_val, &max_val, &min_loc, &max_loc);
+
+    const bool is_sqdiff = (method < 2);
+    const double score = is_sqdiff ? (1.0 - min_val) : max_val;
+    const cv::Point best_loc = is_sqdiff ? min_loc : max_loc;
+    if (out_score) {
+        *out_score = score;
+    }
+    if (score < threshold) {
         return std::nullopt;
     }
     return loa::core::Point2i{
-        cv_roi.x + max_loc.x + templ.cols / 2,
-        cv_roi.y + max_loc.y + templ.rows / 2
+        cv_roi.x + best_loc.x + templ.cols / 2,
+        cv_roi.y + best_loc.y + templ.rows / 2
     };
 #else
     (void)frame;
     (void)roi;
     (void)template_path;
     (void)threshold;
+    (void)method;
+    (void)grayscale;
+    (void)mask;
     return std::nullopt;
 #endif
 }

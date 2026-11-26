@@ -2,13 +2,6 @@
 #include <algorithm>
 #include <chrono>
 
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#endif
-
 namespace loa::interfaces {
 
 namespace {
@@ -42,49 +35,28 @@ bool wait_ms(int ms, const std::atomic<bool>& stop_flag) {
     return !stop_flag.load();
 }
 
-loa::core::Rect2i scale_roi(const loa::core::FrameBuffer& f, const loa::core::Rect2i& r) {
-    if (f.width <= 0 || f.height <= 0) return r;
-    if (f.width == 1920 && f.height == 1080) return r;
-    return loa::core::Rect2i{
-        (r.x * f.width) / 1920,
-        (r.y * f.height) / 1080,
-        std::max(1, (r.width * f.width) / 1920),
-        std::max(1, (r.height * f.height) / 1080)
-    };
-}
-
 double rect_mean_gray(const loa::core::FrameBuffer& f, const loa::core::Rect2i& r) {
     if (f.width <= 0 || f.height <= 0 || f.data.empty()) return 255.0;
-    const auto sr = scale_roi(f, r);
-    const int x0 = std::clamp(sr.x, 0, f.width - 1);
-    const int y0 = std::clamp(sr.y, 0, f.height - 1);
-    const int x1 = std::clamp(sr.x + sr.width, x0 + 1, f.width);
-    const int y1 = std::clamp(sr.y + sr.height, y0 + 1, f.height);
+    const int x0 = std::clamp(r.x, 0, f.width - 1);
+    const int y0 = std::clamp(r.y, 0, f.height - 1);
+    const int x1 = std::clamp(r.x + r.width, x0 + 1, f.width);
+    const int y1 = std::clamp(r.y + r.height, y0 + 1, f.height);
+    const int ch = f.channels > 0 ? f.channels : 3;
+    const int stride = f.stride > 0 ? f.stride : f.width * ch;
 
     double sum = 0.0;
     std::size_t count = 0;
-    const int step = (sr.width * sr.height > 4000) ? 2 : 1;
+    const int step = (r.width * r.height > 4000) ? 2 : 1;
     for (int y = y0; y < y1; y += step) {
         for (int x = x0; x < x1; x += step) {
-            const std::size_t idx = static_cast<std::size_t>(y * f.width + x) * 4;
+            const std::size_t idx = static_cast<std::size_t>(y) * static_cast<std::size_t>(stride) +
+                                    static_cast<std::size_t>(x) * static_cast<std::size_t>(ch);
             if (idx + 2 >= f.data.size()) continue;
             sum += 0.114 * f.data[idx] + 0.587 * f.data[idx + 1] + 0.299 * f.data[idx + 2];
             ++count;
         }
     }
     return count > 0 ? (sum / static_cast<double>(count)) : 255.0;
-}
-
-void send_mouse_wheel(bool up) {
-#ifdef _WIN32
-    INPUT in{};
-    in.type = INPUT_MOUSE;
-    in.mi.dwFlags = MOUSEEVENTF_WHEEL;
-    in.mi.mouseData = static_cast<DWORD>(up ? 120 : -120); // 0x78 / 0xffffff88 @ 0x14034f730
-    ::SendInput(1, &in, sizeof(INPUT));
-#else
-    (void)up;
-#endif
 }
 
 } // namespace
@@ -95,7 +67,7 @@ bool game_menu::is_open() const {
     loa::core::FrameBuffer frame;
     if (!screen_.capture(frame) || frame.empty()) return false;
     return vision_.match_template(frame,
-                                  scale_roi(frame, kGameMenuOpenRoi),
+                                  kGameMenuOpenRoi,
                                   templates_dir_ + "/game_menu.png",
                                   kMenuTemplateConf)
         .has_value();
@@ -115,9 +87,7 @@ bool game_menu::is_slot_connected(const loa::core::FrameBuffer& frame, int grid_
     if (grid_slot_0_to_8 < 0 || grid_slot_0_to_8 >= 9 || frame.empty()) return false;
     const int col = grid_slot_0_to_8 % 3;
     const int row = grid_slot_0_to_8 / 3;
-    const loa::core::Rect2i roi = scale_roi(
-        frame,
-        loa::core::Rect2i{ kSlotColX[col] + 50, kSlotRowY[row] + 13, 85, 20 });
+    const loa::core::Rect2i roi{ kSlotColX[col] + 50, kSlotRowY[row] + 13, 85, 20 };
 
     if (vision_.match_template(frame, roi, templates_dir_ + "/connected.png", kConnectedTemplateConf).has_value()) {
         return true;
@@ -166,10 +136,7 @@ bool game_menu::open_character_switch_menu(const std::atomic<bool>& stop_flag) {
     // Click "Switch Characters" (432, 682, 210, 32) and poll find_connected_row up to 30s (0x14038d850)
     const auto switch_start = std::chrono::steady_clock::now();
     while (!stop_flag.load()) {
-        io_.click_mouse(loa::game::MouseButton::Left,
-                        kSwitchCharsBtn.x + kSwitchCharsBtn.width / 2,
-                        kSwitchCharsBtn.y + kSwitchCharsBtn.height / 2,
-                        50);
+        io_.click_rect(kSwitchCharsBtn, 0, true);
         if (io_.dry_run()) return wait_ms(200, stop_flag);
         if (find_connected_row(stop_flag) >= 0) return true;
         const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -187,7 +154,7 @@ void game_menu::scroll(int rows, bool up, const std::atomic<bool>& stop_flag) {
                    kScrollbarTrack.y + kScrollbarTrack.height / 2);
     for (int i = 0; i < rows && !stop_flag.load(); ++i) {
         if (!io_.dry_run()) {
-            send_mouse_wheel(up);
+            io_.scroll_wheel(up);
         }
         if (!wait_ms(180, stop_flag)) return;
     }
@@ -208,7 +175,7 @@ bool game_menu::select_connect_button_for(int roster_slot_index,
         io_.move_mouse(kScrollbarTrack.x + kScrollbarTrack.width / 2,
                        kScrollbarTrack.y + kScrollbarTrack.height / 2);
         for (int i = 0; i < 6 && !stop_flag.load(); ++i) {
-            send_mouse_wheel(true);
+            io_.scroll_wheel(true);
             if (!wait_ms(60, stop_flag)) return false;
         }
         if (target_row > 2) {
@@ -232,7 +199,7 @@ bool game_menu::select_connect_button_for(int roster_slot_index,
         loa::core::FrameBuffer frame;
         if (screen_.capture(frame) && !frame.empty() && is_slot_connected(frame, slot_in_grid)) {
             already_active = true;
-            io_.press_key(0x1B, 40); // VK_ESCAPE
+            io_.press_key(0x1B); // VK_ESCAPE
             wait_ms(350, stop_flag);
             return true;
         }
@@ -242,10 +209,7 @@ bool game_menu::select_connect_button_for(int roster_slot_index,
     const auto start = std::chrono::steady_clock::now();
     bool highlighted = false;
     while (!stop_flag.load()) {
-        io_.click_mouse(loa::game::MouseButton::Left,
-                        slot_rect.x + slot_rect.width / 2,
-                        slot_rect.y + slot_rect.height / 2,
-                        50);
+        io_.click_rect(slot_rect, 0, true);
         if (!wait_ms(500, stop_flag)) return false;
 
         if (io_.dry_run()) {
@@ -322,12 +286,12 @@ bool game_menu::switch_to(int roster_slot_index,
             loa::core::FrameBuffer frame;
             if (screen_.capture(frame) && !frame.empty() &&
                 vision_.match_template(frame,
-                                       scale_roi(frame, kCombatBlockedRoi),
+                                       kCombatBlockedRoi,
                                        templates_dir_ + "/combat_blocked.png",
                                        kMenuTemplateConf)
                     .has_value()) {
                 if (logger) logger("Switch is combat blocked. Have to escape..");
-                io_.press_key(0x1B, 40);
+                io_.press_key(0x1B);
                 return false;
             }
         }
@@ -340,12 +304,9 @@ bool game_menu::switch_to(int roster_slot_index,
 
         const auto since_click_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_click).count();
         if (since_click_ms >= 10000) {
-            io_.click_mouse(loa::game::MouseButton::Left,
-                            kConnectBtn.x + kConnectBtn.width / 2,
-                            kConnectBtn.y + kConnectBtn.height / 2,
-                            50);
+            io_.click_rect(kConnectBtn, 0, true);
             if (!wait_ms(400, stop_flag)) return false;
-            io_.press_key(0x0D, 50); // VK_RETURN ("enter" @ 0x140391180)
+            io_.press_key(0x0D); // VK_RETURN ("enter" @ 0x140391180)
             last_click = std::chrono::steady_clock::now();
         }
 

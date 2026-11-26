@@ -1,6 +1,7 @@
 #pragma once
 
 #include "loa/core/types.hpp"
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -12,7 +13,7 @@ namespace bf::vision {
 /// BIFROST_HAS_DARKHELP, and falls back to lightweight pixel/DLL checks otherwise.
 class vision_engine {
 public:
-    vision_engine() = default;
+    vision_engine();
     ~vision_engine();
 
     vision_engine(const vision_engine&) = delete;
@@ -36,12 +37,18 @@ public:
         int tolerance = 18,
         int min_pixels = 4) const;
 
-    /// OpenCV template matching (requires BIFROST_HAS_OPENCV; returns nullopt otherwise).
+    /// OpenCV template matching recovered from `0x1403528c0` / `0x140353030` / `0x140353080`.
+    /// Caches decoded templates in memory; supports mask, grayscale toggle,
+    /// `TM_SQDIFF*` (`method < 2`) score inversion (`1.0 - minVal`), and score output.
     std::optional<loa::core::Point2i> match_template(
         const loa::core::FrameBuffer& frame,
         const loa::core::Rect2i& roi,
         const std::string& template_path,
-        double threshold = 0.85) const;
+        double threshold = 0.85,
+        int method = 5,
+        bool grayscale = false,
+        const loa::core::FrameBuffer* mask = nullptr,
+        double* out_score = nullptr) const;
 
     /// Tesseract OCR over ROI.
     std::string read_text(const loa::core::FrameBuffer& frame,
@@ -60,6 +67,8 @@ public:
     bool darkhelp_dll_loaded() const noexcept { return darkhelp_dll_ != nullptr; }
 
 private:
+    struct TemplateCache;
+    std::unique_ptr<TemplateCache> template_cache_;
     bool ocr_ready_ = false;
     bool darkhelp_ready_ = false;
     void* tess_handle_ = nullptr;

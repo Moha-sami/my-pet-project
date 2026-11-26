@@ -337,6 +337,7 @@ bool io_backend::click_rect(const loa::core::Rect2i& rect,
             return false;
         }
     }
+    last_click_point_ = target_pt;
     sleep_ms(pre_delay_ms.value_or(min_button_delay_ms_));
 
     wait_if_paused();

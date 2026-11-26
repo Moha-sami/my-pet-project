@@ -117,8 +117,11 @@ void bind_screen_and_io(const ConnectionConfig& cfg, void* hwnd) {
         if (!cfg.game_window_title.empty()) {
             cfg.screen_capture->attach_window(cfg.game_window_title);
         }
-        if (cfg.kind != ConnectionKind::Local) {
-            // 0x140279470: Moonlight/Sunshine/cloud capture sets DAT_1405e0e52 (is_geforce_now_window) = 0
+        if (cfg.kind == ConnectionKind::Sunshine ||
+            cfg.kind == ConnectionKind::Boosteroid ||
+            cfg.kind == ConnectionKind::Remote) {
+            // 0x140279470: Sunshine/Boosteroid/Remote (Moonlight) sets DAT_1405e0e52 (is_geforce_now_window) = 0.
+            // ConnectionKind::Gfn is left to attach_window (0x1403500c0) which decides from the window title.
             bf::targetting::screen::set_is_geforce_now_window(false);
         }
     }

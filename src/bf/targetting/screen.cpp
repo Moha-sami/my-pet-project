@@ -63,11 +63,13 @@ bool capture_desktop_bgr(const loa::core::Rect2i& roi,
     const int w = roi.width;
     const int h = roi.height;
     if (w <= 0 || h <= 0) {
+        err = "Invalid BitBlt ROI";
         return false;
     }
 
     HDC src_dc = GetWindowDC(nullptr);
     if (!src_dc) {
+        err = "GetWindowDC(nullptr) failed (GetLastError=" + std::to_string(GetLastError()) + ")";
         return false;
     }
     HDC mem_dc = CreateCompatibleDC(src_dc);
@@ -75,6 +77,7 @@ bool capture_desktop_bgr(const loa::core::Rect2i& roi,
     HGDIOBJ old_obj = SelectObject(mem_dc, bmp);
 
     const BOOL ok = BitBlt(mem_dc, 0, 0, w, h, src_dc, roi.x, roi.y, SRCCOPY);
+    const DWORD bitblt_err = ok ? 0 : GetLastError();
 
     BITMAPINFO bmi{};
     bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -95,6 +98,7 @@ bool capture_desktop_bgr(const loa::core::Rect2i& roi,
     ReleaseDC(nullptr, src_dc);
 
     if (ok != TRUE) {
+        err = "BitBlt failed (GetLastError=" + std::to_string(bitblt_err) + ")";
         return false;
     }
 

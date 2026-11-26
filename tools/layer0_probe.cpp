@@ -151,8 +151,6 @@ int main(int argc, char** argv) {
     const TemplateSpec specs[] = {
         { "game_menu.png",      { 1010, 280,  76, 62 }, 0.70 },
         { "combat_blocked.png", {  831, 711, 261, 29 }, 0.70 },
-        { "connected.png",      {  729, 432,  85, 20 }, 0.60 },
-        { "connecting.png",     {  729, 432,  85, 20 }, 0.60 },
         { "launch.png",         {  802, 877, 154, 39 }, 0.70 },
     };
 
@@ -166,6 +164,27 @@ int main(int argc, char** argv) {
             << " | " << std::setprecision(2) << s.threshold
             << " | " << (hit.has_value() ? "PASS" : "FAIL");
         log_line(row.str());
+    }
+
+    // Check all 9 character grid slots (0x14038af20 / 0x14038d680)
+    constexpr int kSlotColX[3] = { 679, 874, 1069 };
+    constexpr int kSlotRowY[3] = { 419, 506, 595 };
+    const char* slot_templates[2] = { "connected.png", "connecting.png" };
+    for (int row_i = 0; row_i < 3; ++row_i) {
+        for (int col_i = 0; col_i < 3; ++col_i) {
+            const loa::core::Rect2i slot_roi{ kSlotColX[col_i] + 50, kSlotRowY[row_i] + 13, 85, 20 };
+            for (const char* tmpl_name : slot_templates) {
+                double score = 0.0;
+                const auto hit = vision.match_template(
+                    match_frame, slot_roi, templates_dir + "/" + tmpl_name, 0.60, 5, false, nullptr, &score);
+                std::ostringstream row;
+                row << tmpl_name << "(" << row_i << "," << col_i << ") | ("
+                    << slot_roi.x << "," << slot_roi.y << "," << slot_roi.width << "," << slot_roi.height
+                    << ") | " << std::fixed << std::setprecision(4) << score
+                    << " | 0.60 | " << (hit.has_value() ? "PASS" : "FAIL");
+                log_line(row.str());
+            }
+        }
     }
 
     // Harmless WindMouse input test: 3 fixed points, NO clicks or keys

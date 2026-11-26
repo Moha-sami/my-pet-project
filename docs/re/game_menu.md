@@ -93,9 +93,9 @@ All 5 `RT_RCDATA` resources extracted directly from `Bifrost.exe` `.rsrc`:
    - `0x140354340` checks `GetWindowRect(hwnd)` == `1920x1080` (`0x780 x 0x438`); if not `1920x1080`, falls back to full-screen capture (`param_3 = 0`); remote stream throws if not `1920x1080 BGR`.
    - `0x140353460` maps absolute screen `(x, y)` via `dx = (x * 65535) / (GetSystemMetrics(SM_CXSCREEN) - 1)`, `dy = (y * 65535) / (GetSystemMetrics(SM_CYSCREEN) - 1)` for `SendInput(MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE)`.
 5. **21:9 Handling**:
-   - `Bifrost.exe` does **not** use per-ratio coordinate tables; it assumes **16:9 `1920x1080`** with Lost Ark **"Force 21:9 Aspect Ratio"** letterboxing (`y = 0..128` and `y = 952..1080` black bars, active HUD inside `y = 132..868`).
-   - All `game_menu` UI rects (`y = 280..740`) and `is_loading_screen` ROIs (`(0,132,225,720)` and `(1673,191,233,677)`) fall strictly inside `y = 132..868`.
-   - Our `io_backend::to_screen_point` scales `1920x1080` base coords to the attached window's client rect (`x * client_w / 1920`, `y * client_h / 1080`), which is exact 1:1 on `1920x1080` Moonlight/Lost Ark and also supports resized windows.
+   - `Bifrost.exe` does **not** use per-ratio coordinate tables; it assumes **16:9 `1920x1080`** with Lost Ark **"Force 21:9 Aspect Ratio"** letterboxing (measured on native frame: top bar `y = 0..134`, bottom bar `y = 945..1079`, active content `y = 135..944` = `810 px`).
+   - All `game_menu` UI rects (`y = 280..740`) and `is_loading_screen` ROIs (`(0,132,225,720)` and `(1673,191,233,677)`) fall within the `1920x1080` frame (`(0,132)` starts near the top bar boundary).
+   - Layer 0 uses exact `1920x1080` screen coordinates (`PrintWindow` / `BitBlt` + `SendInput` `GetSystemMetrics(0/1)`) with no `to_screen_point` scaling.
 
 ---
 

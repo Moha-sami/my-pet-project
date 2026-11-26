@@ -14,7 +14,7 @@ Status: `[CONFIRMED from decompile @ 0x14035e840]` (not ported yet).
   - `_Xtime_get_ticks` (`100 ns` ticks)
   - `(*param_1 + 8)` (`vtable[1]`: `is_open()`)
   - `0x14034f460` (`press_key_with_modifier(param_1[5])`, hotkey struct at `this + 0x28`)
-  - `0x1401fd6d0(&lambda_2, 1, 8000)` (poll `is_open()` with `8000 ms` timeout)
+  - `0x1401fd6d0(&lambda_2, 1, 8000)` (poll `lambda_2() == 1` (`true`) every `100 ms` via `FUN_1403492c0(100)` with `8000 ms` timeout)
   - `0x140355de0` + `_CxxThrowException(&DAT_14057c1b8)` (timeout exception)
 
 ---
@@ -24,9 +24,11 @@ Status: `[CONFIRMED from decompile @ 0x14035e840]` (not ported yet).
 | Item | Value | Role | Evidence |
 |---|---|---|---|
 | `timeout_total` | `600,000,000` (`60 s`) | Outer loop deadline in `100 ns` ticks (`599999999 < lVar17 - lVar16`) | `0x14035e840` |
-| `poll_wait_ms` | `8000` (`8 s`) | Wait/poll timeout per keypress via `FUN_1401fd6d0(&lambda_2, 1, 8000)` | `0x14035e840` |
+| `poll_expected` | `1` (`true`) | Expected return value of `lambda_2()` (`this->is_open()`) in `FUN_1401fd6d0` (`cVar3 == param_2`) | `0x1401fd6d0` |
+| `poll_wait_ms` | `8000` (`8 s`) | Wait/poll timeout per keypress (`param_3 * 10000 <= elapsed`) | `0x1401fd6d0` |
+| `poll_interval_ms` | `100` (`0x64`) | Sleep between `is_open()` polls (`FUN_1403492c0(100, ...)`) | `0x1401fd6d0` |
 | `hotkey_ptr` | `this + 0x28` (`param_1[5]`) | Key + optional modifier struct passed to `FUN_14034f460` | `0x14035e840` |
-| `log_str` | `DAT_1404ccd18..DAT_1404ccd26` (`15` bytes) | XOR-obfuscated log format string (`0x4b`..`0x30` `% 0x3a` key) | `0x14035e840` |
+| `log_str` | `"Opening '{}'..."` (`"Opening '{}'.."`) | Decoded from `DAT_1404ccd18..DAT_1404ccd26` (`7f 41 57 5d 5d 5b 51 17 1f 42 47 1c 12 13 3e`) XOR `0x30 + i` | `0x14035e840` |
 | `templates` | None in `base_interface::open` itself | Template matching happens inside each subclass's virtual `is_open()` (`vtable[1]`), e.g. `game_menu::is_open` (`0x14038d7d0` -> `game_menu.png`) | `0x14035e840` |
 
 ---

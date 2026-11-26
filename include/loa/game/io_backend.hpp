@@ -71,6 +71,7 @@ public:
     /// Optional test sink replacing OS SendInput/GetCursorPos in non-dry-run tests.
     using InputSink = std::function<void(const InputEvent&)>;
     void set_input_sink(InputSink sink) { input_sink_ = std::move(sink); }
+    loa::core::Point2i last_click_point() const noexcept { return last_click_point_; }
 
     /// Load `mouse_speed` and `min_button_delay` from general.json.
     bool load_settings_from_json(const std::string& general_json_path);
@@ -134,6 +135,7 @@ private:
     int min_button_delay_ms_ = kDefaultMinButtonDelay; // DAT_14059f5d8
     const bf::streaming::stream_bridge* stream_bridge_ = nullptr;
     InputSink input_sink_;
+    mutable loa::core::Point2i last_click_point_{};
 };
 
 } // namespace loa::game

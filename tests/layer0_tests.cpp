@@ -1,6 +1,7 @@
 #include "bf/targetting/screen.hpp"
 #include "bf/vision/vision_engine.hpp"
 #include "loa/game/io_backend.hpp"
+#include "loa/interfaces/base_interface.hpp"
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -334,6 +335,44 @@ void test_vision_match_template() {
 #endif
 }
 
+class FakeInterface final : public loa::interfaces::base_interface {
+public:
+    using base_interface::base_interface;
+    bool open_state = false;
+    bool is_open() const override { return open_state; }
+};
+
+void test_base_interface_open() {
+    loa::game::io_backend io;
+    io.set_dry_run(false);
+    int key_downs = 0;
+    FakeInterface iface("Fake Menu", io, "esc");
+    iface.set_timeouts_for_test(2000, 120, 20);
+    io.set_input_sink([&](const loa::game::InputEvent& ev) {
+        if (ev.kind == loa::game::InputEvent::Kind::KeyDown) {
+            ++key_downs;
+            if (key_downs >= 2) {
+                iface.open_state = true;
+            }
+        }
+    });
+    iface.open();
+    REQUIRE(iface.is_open());
+    REQUIRE(key_downs == 2);
+
+    // Timeout case throws std::runtime_error
+    FakeInterface stuck("Stuck Menu", io, "esc");
+    stuck.set_timeouts_for_test(120, 40, 15);
+    bool threw = false;
+    try {
+        stuck.open();
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+    REQUIRE(threw);
+    std::cout << "[PASS] test_base_interface_open\n";
+}
+
 } // namespace
 
 int main() {
@@ -342,6 +381,7 @@ int main() {
     test_key_table_and_sleep_guard();
     test_screen_capture_cache_retry_and_remote();
     test_vision_match_template();
+    test_base_interface_open();
     std::cout << "ALL LAYER0 TESTS PASSED\n";
     return 0;
 }

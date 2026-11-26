@@ -40,7 +40,7 @@ assets/maps/
 *.dh
 
 # Real config files with secrets & personal screenshots
-settings/
+/settings/
 *.secret.json
 screenshots/
 

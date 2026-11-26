@@ -327,7 +327,7 @@ bool io_backend::click_rect(const loa::core::Rect2i& rect,
     loa::core::Rect2i box = rect;
     loa::core::Point2i target_pt{ box.x + box.width / 2, box.y + box.height / 2 };
     if (move_first) {
-        if (!loa::core::shared_dat_1405e0e52().load() && (box.width * box.height) >= 301) {
+        if (!loa::core::shared_is_geforce_now_window().load() && (box.width * box.height) >= 301) {
             const float wf = static_cast<float>(box.width);
             box.x = box.x - static_cast<int>(wf * -0.70f); // 0x1404ccd10
             box.width = static_cast<int>(wf * 0.30f);      // 0x14046cac0

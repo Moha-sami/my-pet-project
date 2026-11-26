@@ -158,17 +158,17 @@ bool capture_window_printwindow_bgr(HWND hwnd, loa::core::FrameBuffer& out_frame
 
 } // namespace
 
-// Recovered from FUN_1403500c0 (0x1403500c0): sets DAT_1405e0e52 = 1 if matched title
-// contains "GeForce" or "Cloud Gaming Service", else 0.
+// Recovered from FUN_1403500c0 (0x1403500c0): sets DAT_1405e0e52 (is_geforce_now_window) = 1
+// if matched title contains "GeForce" or "Cloud Gaming Service", else 0.
 bool screen::attach_window(const std::string& title_substring) {
     EnumContext ctx{ to_lower_ascii(title_substring), nullptr, {} };
     EnumWindows(enum_windows_cb, reinterpret_cast<LPARAM>(&ctx));
     hwnd_ = ctx.found;
-    const bool is_cloud_window =
+    const bool is_geforce_now =
         hwnd_ != nullptr &&
         (ctx.matched_title.find("GeForce") != std::string::npos ||
          ctx.matched_title.find("Cloud Gaming Service") != std::string::npos);
-    loa::core::shared_dat_1405e0e52().store(is_cloud_window);
+    loa::core::shared_is_geforce_now_window().store(is_geforce_now);
     return hwnd_ != nullptr;
 }
 
@@ -241,7 +241,7 @@ bool screen::capture(loa::core::FrameBuffer& out_frame, bool use_window, bool us
             out_frame = cached_win_frame_;
             return true;
         }
-        const bool check_black = loa::core::shared_dat_1405e0e52().load();
+        const bool check_black = loa::core::shared_is_geforce_now_window().load();
         for (int attempt = 0; attempt < kMaxBlackRetries; ++attempt) {
             int w = 0;
             int h = 0;
@@ -280,11 +280,12 @@ bool screen::capture(loa::core::FrameBuffer& out_frame, bool use_window, bool us
             const auto now = std::chrono::steady_clock::now();
             if (use_cache && !cached_win_frame_.empty() &&
                 std::chrono::duration_cast<std::chrono::milliseconds>(now - cached_win_at_).count() < kCacheTtlMs) {
+                last_capture_path_ = "PrintWindow(cached)";
                 out_frame = cached_win_frame_;
                 return true;
             }
 
-            const bool check_black = loa::core::shared_dat_1405e0e52().load();
+            const bool check_black = loa::core::shared_is_geforce_now_window().load();
             for (int attempt = 0; attempt < kMaxBlackRetries; ++attempt) {
                 if (!capture_window_printwindow_bgr(hwnd, cached_win_frame_)) {
                     return false;
@@ -294,6 +295,7 @@ bool screen::capture(loa::core::FrameBuffer& out_frame, bool use_window, bool us
                 }
             }
             cached_win_at_ = std::chrono::steady_clock::now();
+            last_capture_path_ = "PrintWindow";
             out_frame = cached_win_frame_;
             return true;
         }
@@ -304,6 +306,7 @@ bool screen::capture(loa::core::FrameBuffer& out_frame, bool use_window, bool us
     const auto now = std::chrono::steady_clock::now();
     if (use_cache && !cached_desk_frame_.empty() &&
         std::chrono::duration_cast<std::chrono::milliseconds>(now - cached_desk_at_).count() < kCacheTtlMs) {
+        last_capture_path_ = "BitBlt(cached)";
         out_frame = cached_desk_frame_;
         return true;
     }
@@ -312,6 +315,7 @@ bool screen::capture(loa::core::FrameBuffer& out_frame, bool use_window, bool us
         return false;
     }
     cached_desk_at_ = std::chrono::steady_clock::now();
+    last_capture_path_ = "BitBlt";
     out_frame = cached_desk_frame_;
     return true;
 }

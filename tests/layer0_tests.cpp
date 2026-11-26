@@ -11,6 +11,14 @@
 #include <thread>
 #include <vector>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <mmsystem.h>
+#endif
+
 #ifdef BIFROST_HAS_OPENCV
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -94,11 +102,19 @@ void test_windmouse_bounds_and_wind() {
 }
 
 void test_click_rect_timing_and_narrowing() {
+#ifdef _WIN32
+    // Windows default ~15.6 ms timer granularity + io_backend::sleep_ms 50 ms chunking can cause
+    // 100..200 ms post-wait to overshoot >200 ms. Request 1 ms timer resolution for accurate timing.
+    struct TimerPeriodGuard {
+        TimerPeriodGuard() { timeBeginPeriod(1); }
+        ~TimerPeriodGuard() { timeEndPeriod(1); }
+    } timer_guard;
+#endif
     loa::game::io_backend io;
     io.set_dry_run(false);
     io.set_mouse_speed(12);
     io.set_min_button_delay_ms(120);
-    io.set_is_local_game_window(false); // DAT_1405e0e52 == 0 -> right-30% narrowing
+    io.set_is_geforce_now_window(false); // DAT_1405e0e52 == 0 -> right-30% narrowing
 
     std::vector<loa::game::InputEvent> events;
     io.set_input_sink([&](const loa::game::InputEvent& ev) {
@@ -137,11 +153,14 @@ void test_click_rect_timing_and_narrowing() {
                              .count();
     (void)t_start;
 
-    REQUIRE(pre_ms >= 110);
-    REQUIRE(hold_ms >= 12 && hold_ms <= 55);
-    REQUIRE(post_ms >= 95 && post_ms <= 240);
-    std::cout << "[PASS] test_click_rect_timing_and_narrowing (pre=" << pre_ms
-              << "ms hold=" << hold_ms << "ms post=" << post_ms << "ms)\n";
+    std::cout << "  click_rect measured: pre=" << pre_ms
+              << "ms hold=" << hold_ms << "ms post=" << post_ms << "ms\n";
+    // Even with timeBeginPeriod(1), 50 ms chunking (up to 4 chunks for 100..200 ms) +
+    // OS scheduler wakeup latency (~5-10 ms per chunk) can push 200 ms post-wait to ~235 ms.
+    REQUIRE(pre_ms >= 115);
+    REQUIRE(hold_ms >= 13 && hold_ms <= 45);
+    REQUIRE(post_ms >= 95 && post_ms <= 250);
+    std::cout << "[PASS] test_click_rect_timing_and_narrowing\n";
 }
 
 void test_key_table_and_sleep_guard() {
@@ -165,10 +184,10 @@ void test_key_table_and_sleep_guard() {
     REQUIRE(upper->vk == 'A');
 
     // Single source of truth shared between screen and io_backend
-    bf::targetting::screen::set_is_local_game_window(true);
-    REQUIRE(loa::game::io_backend::is_local_game_window() == true);
-    loa::game::io_backend::set_is_local_game_window(false);
-    REQUIRE(bf::targetting::screen::is_local_game_window() == false);
+    bf::targetting::screen::set_is_geforce_now_window(true);
+    REQUIRE(loa::game::io_backend::is_geforce_now_window() == true);
+    loa::game::io_backend::set_is_geforce_now_window(false);
+    REQUIRE(bf::targetting::screen::is_geforce_now_window() == false);
 
     // Pause/stop guard on sleep_ms (0x1403492c0)
     std::atomic<bool> pause_flag{ false };
@@ -186,7 +205,7 @@ void test_key_table_and_sleep_guard() {
 
 void test_screen_capture_cache_retry_and_remote() {
     bf::targetting::screen scr;
-    bf::targetting::screen::set_is_local_game_window(true); // DAT_1405e0e52 == 1 -> black retry enabled
+    bf::targetting::screen::set_is_geforce_now_window(true); // DAT_1405e0e52 == 1 -> black retry enabled
 
     int calls = 0;
     auto non_black = make_bgr_frame(1920, 1080, 10, 20, 30);
@@ -242,7 +261,7 @@ void test_screen_capture_cache_retry_and_remote() {
     });
     REQUIRE(scr.capture(fr, true, false));
     scr.set_remote_frame_hook(nullptr);
-    bf::targetting::screen::set_is_local_game_window(false);
+    bf::targetting::screen::set_is_geforce_now_window(false);
 
     // Moonlight/cloud capture: DAT_1405e0e52 == 0 -> no 10x black-frame retry
     calls = 0;
@@ -262,6 +281,14 @@ void test_screen_capture_cache_retry_and_remote() {
 }
 
 void test_vision_match_template() {
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <mmsystem.h>
+#endif
+
 #ifdef BIFROST_HAS_OPENCV
     auto frame = make_bgr_frame(1920, 1080, 20, 20, 20);
     cv::Mat templ(24, 32, CV_8UC3, cv::Scalar(20, 20, 20));

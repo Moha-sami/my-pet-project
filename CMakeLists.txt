@@ -103,8 +103,22 @@ add_executable(layer0_tests
     src/loa/game/io_backend.cpp
 )
 target_include_directories(layer0_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(layer0_tests PRIVATE user32 gdi32)
+target_link_libraries(layer0_tests PRIVATE user32 gdi32 winmm)
 if (OpenCV_FOUND)
     target_compile_definitions(layer0_tests PRIVATE BIFROST_HAS_OPENCV)
     target_link_libraries(layer0_tests PRIVATE ${OpenCV_LIBS})
+endif()
+
+add_executable(layer0_probe
+    tools/layer0_probe.cpp
+    src/bf/targetting/screen.cpp
+    src/bf/vision/vision_engine.cpp
+    src/bf/streaming/stream_bridge.cpp
+    src/loa/game/io_backend.cpp
+)
+target_include_directories(layer0_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(layer0_probe PRIVATE user32 gdi32)
+if (OpenCV_FOUND)
+    target_compile_definitions(layer0_probe PRIVATE BIFROST_HAS_OPENCV)
+    target_link_libraries(layer0_probe PRIVATE ${OpenCV_LIBS})
 endif()

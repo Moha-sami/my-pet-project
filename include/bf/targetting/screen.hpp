@@ -29,11 +29,11 @@ public:
     bool attach_window(const std::string& title_substring);
     void* window_handle() const noexcept { return hwnd_; }
 
-    /// Single source of truth for `DAT_1405e0e52` (`0x1403500c0`):
-    /// `true` when window title contains "GeForce" or "Cloud Gaming Service" (enables PrintWindow black-frame retry),
-    /// `false` for local Lost Ark or remote stream_bridge.
-    static void set_is_local_game_window(bool flag) noexcept { loa::core::shared_dat_1405e0e52().store(flag); }
-    static bool is_local_game_window() noexcept { return loa::core::shared_dat_1405e0e52().load(); }
+    /// Single source of truth for `DAT_1405e0e52` (`0x1403500c0`), `is_geforce_now_window`:
+    /// `true` (1) when window title contains "GeForce" or "Cloud Gaming Service" (enables PrintWindow black-frame retry),
+    /// `false` (0) for local Lost Ark, Moonlight, or remote stream_bridge.
+    static void set_is_geforce_now_window(bool flag) noexcept { loa::core::shared_is_geforce_now_window().store(flag); }
+    static bool is_geforce_now_window() noexcept { return loa::core::shared_is_geforce_now_window().load(); }
 
     /// Test hooks for unit testing cache TTL, 10x black-frame retry, and remote validation without a live HWND.
     using WindowCaptureHook = std::function<bool(loa::core::FrameBuffer& out_frame, int& out_w, int& out_h)>;
@@ -66,6 +66,7 @@ public:
                                        const loa::core::Rect2i& roi);
 
     const std::string& last_error() const noexcept { return last_error_; }
+    const std::string& last_capture_path() const noexcept { return last_capture_path_; }
 
 private:
     void* hwnd_ = nullptr;
@@ -79,6 +80,7 @@ private:
     mutable loa::core::FrameBuffer cached_desk_frame_;
     mutable std::chrono::steady_clock::time_point cached_desk_at_{};
     mutable std::string last_error_;
+    mutable std::string last_capture_path_;
 };
 
 } // namespace bf::targetting

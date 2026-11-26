@@ -64,9 +64,9 @@ public:
     void set_min_button_delay_ms(int ms) noexcept { min_button_delay_ms_ = ms < 50 ? 50 : ms; }
     int min_button_delay_ms() const noexcept { return min_button_delay_ms_; }
 
-    /// Single source of truth for `DAT_1405e0e52` (`0x1403500c0`), shared with `screen`.
-    static void set_is_local_game_window(bool flag) noexcept { loa::core::shared_dat_1405e0e52().store(flag); }
-    static bool is_local_game_window() noexcept { return loa::core::shared_dat_1405e0e52().load(); }
+    /// Single source of truth for `DAT_1405e0e52` (`0x1403500c0`), `is_geforce_now_window`, shared with `screen`.
+    static void set_is_geforce_now_window(bool flag) noexcept { loa::core::shared_is_geforce_now_window().store(flag); }
+    static bool is_geforce_now_window() noexcept { return loa::core::shared_is_geforce_now_window().load(); }
 
     /// Optional test sink replacing OS SendInput/GetCursorPos in non-dry-run tests.
     using InputSink = std::function<void(const InputEvent&)>;

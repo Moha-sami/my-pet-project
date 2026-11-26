@@ -56,10 +56,10 @@ enum class ActivityStatus {
     Timeout
 };
 
-/// Single source of truth for `DAT_1405e0e52` (`0x1403500c0` / `0x140279470`).
-/// `true` (1) when target window title contains "GeForce" or "Cloud Gaming Service";
-/// `false` (0) for local Lost Ark or remote stream_bridge.
-inline std::atomic<bool>& shared_dat_1405e0e52() noexcept {
+/// Single source of truth for `DAT_1405e0e52` (`0x1403500c0` / `0x140279470`), i.e. `is_geforce_now_window`.
+/// `true` (1) when target window title contains "GeForce" or "Cloud Gaming Service" (enables PrintWindow black-frame retry, skips right-30% narrowing);
+/// `false` (0) for local Lost Ark, Moonlight, or remote stream_bridge (enables right-30% narrowing, skips black-frame retry).
+inline std::atomic<bool>& shared_is_geforce_now_window() noexcept {
     static std::atomic<bool> flag{ false };
     return flag;
 }

@@ -39,10 +39,10 @@ Scan code resolution (`0x14034db70` / `0x14034df10`):
 
 ## 2. `DAT_1405e0e52`, `0x14035dae0` `else` Branch, and `mouse_speed` / `min_button_delay`
 
-### 2.1 `DAT_1405e0e52` (`is_local_game_window`)
+### 2.1 `DAT_1405e0e52` (`is_geforce_now_window`)
 - Not a JSON config key — it is a runtime state flag written in `0x1403500c0` (window attach) and `0x140279470` (`sunshine_service`):
   - `0x140279470`: `DAT_1405e0e52 = 0;` (Sunshine remote stream)
-  - `0x1403500c0`: `DAT_1405e0e52 = 0;` (line 1390, cloud/remote/Moonlight) vs `DAT_1405e0e52 = 1;` (`LAB_140350a33`, local Lost Ark window).
+  - `0x1403500c0`: `DAT_1405e0e52 = 0;` by default (local Lost Ark, Moonlight, or remote), vs `DAT_1405e0e52 = 1;` (`LAB_140350a33`) when matched window title contains `"GeForce"` or `"Cloud Gaming Service"` (enables `PrintWindow` black-frame retry in `0x140354340`, disables right-30% click narrowing in `0x14035dae0`).
 
 ### 2.2 Full `else` Branch of `0x14035dae0` (`click_rect`)
 ```c

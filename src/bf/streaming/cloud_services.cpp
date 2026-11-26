@@ -118,8 +118,8 @@ void bind_screen_and_io(const ConnectionConfig& cfg, void* hwnd) {
             cfg.screen_capture->attach_window(cfg.game_window_title);
         }
         if (cfg.kind != ConnectionKind::Local) {
-            // 0x140279470: Moonlight/Sunshine/cloud capture sets DAT_1405e0e52 = 0
-            bf::targetting::screen::set_is_local_game_window(false);
+            // 0x140279470: Moonlight/Sunshine/cloud capture sets DAT_1405e0e52 (is_geforce_now_window) = 0
+            bf::targetting::screen::set_is_geforce_now_window(false);
         }
     }
     if (cfg.io) {

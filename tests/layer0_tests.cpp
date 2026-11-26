@@ -244,6 +244,20 @@ void test_screen_capture_cache_retry_and_remote() {
     scr.set_remote_frame_hook(nullptr);
     bf::targetting::screen::set_is_local_game_window(false);
 
+    // Moonlight/cloud capture: DAT_1405e0e52 == 0 -> no 10x black-frame retry
+    calls = 0;
+    return_black = true;
+    scr.set_window_capture_hook([&](loa::core::FrameBuffer& out, int& w, int& h) {
+        ++calls;
+        w = 1920;
+        h = 1080;
+        out = black;
+        return true;
+    });
+    REQUIRE(scr.capture(f4, true, false));
+    REQUIRE(calls == 1);
+    scr.set_window_capture_hook(nullptr);
+
     std::cout << "[PASS] test_screen_capture_cache_retry_and_remote\n";
 }
 

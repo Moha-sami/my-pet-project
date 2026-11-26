@@ -1,0 +1,56 @@
+{
+  "discord": {
+    "token": "REPLACE_ME",
+    "application": "REPLACE_ME",
+    "guild": "REPLACE_ME",
+    "user": "REPLACE_ME",
+    "owner": "",
+    "category": "",
+    "channels": {
+      "ac_dashboard": "REPLACE_ME",
+      "ac_info": "REPLACE_ME",
+      "chaos_info": "REPLACE_ME",
+      "commands": "REPLACE_ME",
+      "dashboard": "REPLACE_ME",
+      "embers": "REPLACE_ME",
+      "error": "REPLACE_ME",
+      "general": "REPLACE_ME",
+      "stronghold": "",
+      "cube": "REPLACE_ME",
+      "fishing": "",
+      "guardians": "REPLACE_ME",
+      "paradise": ""
+    },
+    "options": {
+      "ac_ping_end": true,
+      "ac_ping_start": false,
+      "allow_pings": true,
+      "auto_launch": true,
+      "chaos_completions": true,
+      "cookie_loot": false,
+      "craft_results": true,
+      "dispatch_loot": true,
+      "farm_rewards": true,
+      "fishing_done": true,
+      "ping_rod_low": false,
+      "training_results": false,
+      "cube_completions": true,
+      "guardian_completions": true,
+      "paradise_completions": true
+    }
+  },
+  "general": {
+    "active_roster": "REPLACE_ME",
+    "auto_snap_overlay": true,
+    "connection": 1,
+    "cube_use_network": true,
+    "disable_overlay": true,
+    "logging_overlay": true,
+    "min_button_delay": 100,
+    "mode": 4,
+    "mouse_speed": 14,
+    "refresh_rate_cap": 5,
+    "refresh_token": "REPLACE_ME",
+    "sunshine_host": "localhost"
+  }
+}

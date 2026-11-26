@@ -1,0 +1,50 @@
+# Build outputs
+build/
+out/
+*.exe
+*.dll
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.a
+imgui.ini
+run_gui.bat
+
+# Original binaries & runtime folder
+Bifrost.exe
+BifrostMini.exe
+Bifrost-2.0.0-windows-x64/
+
+# Ghidra projects
+*.gpr
+*.rep/
+ghidra_*/
+
+# Raw decompiler dumps & logs
+re/decompiled/
+docs/re/dumps/
+*_decompiled.txt
+*_extra.txt
+*_gaps*.txt
+task-*.log
+*.log
+
+# Extracted embedded assets & neural networks
+assets/templates/*.png
+assets/templates/**/*.png
+assets/*.png
+assets/maps/
+*.dh
+
+# Real config files with secrets & personal screenshots
+settings/
+*.secret.json
+screenshots/
+
+# Large files (>5 MB)
+*.zip
+*.7z
+*.rar

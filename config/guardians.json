@@ -1,0 +1,166 @@
+{
+        "GUARDIAN_DESKALUDA": {
+            "image_path": "GUARDIAN_DESKALUDA", "bounding_point_x": 812, "bounding_point_y": 343,
+            "width": 305, "height": 282, "waypoint_accuracy": 5.0,
+            "dash_distance": 5.0, "dashing_allowed": true, "show_pathing": false,
+            "adjust_interval": 500,
+            "waypoints": [
+                {"x":67,"y":227,"action":9,"clear_until":0},
+                {"x":101,"y":183,"action":15,"clear_until":0},
+                {"x":152,"y":92,"action":0,"clear_until":0},
+                {"x":205,"y":92,"action":0,"clear_until":0}
+            ]
+        },
+        "GUARDIAN_KRATHIOS": {
+            "image_path": "GUARDIAN_KRATHIOS", "bounding_point_x": 777, "bounding_point_y": 341,
+            "width": 310, "height": 311, "waypoint_accuracy": 5.0,
+            "dash_distance": 5.0, "dashing_allowed": true, "show_pathing": false,
+            "adjust_interval": 500,
+            "waypoints": [
+                {"x":224,"y":278,"action":9,"clear_until":0},
+                {"x":189,"y":261,"action":15,"clear_until":0},
+                {"x":131,"y":188,"action":0,"clear_until":0},
+                {"x":141,"y":150,"action":0,"clear_until":0}
+            ]
+        },
+        "GUARDIAN_DREXTALAS": {
+            "image_path": "GUARDIAN_DREXTALAS", "bounding_point_x": 816, "bounding_point_y": 342,
+            "width": 299, "height": 282, "waypoint_accuracy": 5.0,
+            "dash_distance": 5.0, "dashing_allowed": true, "show_pathing": false,
+            "adjust_interval": 500,
+            "waypoints": [
+                {"x":54,"y":240,"action":9,"clear_until":0},
+                {"x":94,"y":194,"action":2,"clear_until":0},
+                {"x":121,"y":174,"action":0,"clear_until":0},
+                {"x":193,"y":115,"action":0,"clear_until":0}
+            ]
+        },
+        "GUARDIAN_IGREXION": {
+            "image_path": "GUARDIAN_IGREXION", "bounding_point_x": 767, "bounding_point_y": 314,
+            "width": 399, "height": 366, "waypoint_accuracy": 6.999998092651367,
+            "dash_distance": 5.0, "dashing_allowed": true, "show_pathing": false,
+            "adjust_interval": 500,
+            "waypoints": [
+                {"x":43,"y":50,"action":9,"clear_until":0},
+                {"x":84,"y":56,"action":0,"clear_until":0},
+                {"x":121,"y":89,"action":0,"clear_until":0},
+                {"x":165,"y":141,"action":0,"clear_until":0},
+                {"x":199,"y":194,"action":2,"clear_until":0},
+                {"x":271,"y":265,"action":0,"clear_until":0}
+            ]
+        },
+        "GUARDIAN_VELGANOS": {
+            "image_path": "GUARDIAN_VELGANOS", "bounding_point_x": 768, "bounding_point_y": 280,
+            "width": 328, "height": 414, "waypoint_accuracy": 5.0,
+            "dash_distance": 5.0, "dashing_allowed": true, "show_pathing": false,
+            "adjust_interval": 500,
+            "waypoints": [
+                {"x":288,"y":383,"action":9,"clear_until":0},
+                {"x":273,"y":332,"action":15,"clear_until":0},
+                {"x":133,"y":139,"action":0,"clear_until":0}
+            ]
+        },
+        "GUARDIAN_ACHATES": {
+            "image_path": "GUARDIAN_ACHATES", "bounding_point_x": 715, "bounding_point_y": 314,
+            "width": 419, "height": 308, "waypoint_accuracy": 7.0,
+            "dash_distance": 10.0, "dashing_allowed": true, "show_pathing": false,
+            "adjust_interval": 500,
+            "waypoints": [
+                {"x":83,"y":228,"action":9,"clear_until":0},
+                {"x":93,"y":207,"action":0,"clear_until":0},
+                {"x":214,"y":212,"action":0,"clear_until":0},
+                {"x":229,"y":190,"action":2,"clear_until":0},
+                {"x":288,"y":210,"action":0,"clear_until":0},
+                {"x":347,"y":119,"action":0,"clear_until":0}
+            ]
+        },
+        "KURZAN_FRONT_SULFUR": {
+            "image_path": "SULFUR", "bounding_point_x": 812, "bounding_point_y": 493,
+            "width": 251, "height": 185, "waypoint_accuracy": 5.0,
+            "dash_distance": 5.0, "dashing_allowed": false, "make_transparent": false,
+            "show_pathing": true, "stop_on_energy_depleted": true,
+            "use_energy_potions": false, "adjust_interval": 500,
+            "waypoints": [
+                {"x":218,"y":147,"action":9,"clear_until":0},
+                {"x":198,"y":137,"action":12,"clear_until":5},
+                {"x":181,"y":141,"action":13,"clear_until":5},
+                {"x":164,"y":146,"action":12,"clear_until":10},
+                {"x":141,"y":139,"action":12,"clear_until":15},
+                {"x":114,"y":133,"action":13,"clear_until":5},
+                {"x":98,"y":125,"action":12,"clear_until":25},
+                {"x":85,"y":110,"action":12,"clear_until":40},
+                {"x":76,"y":87,"action":12,"clear_until":50},
+                {"x":47,"y":60,"action":12,"clear_until":55},
+                {"x":31,"y":40,"action":12,"clear_until":80},
+                {"x":54,"y":24,"action":12,"clear_until":100}
+            ]
+        },
+        "KURZAN_FRONT_JUMP": {
+            "image_path": "JUMP", "bounding_point_x": 831, "bounding_point_y": 332,
+            "width": 271, "height": 320, "waypoint_accuracy": 5.0,
+            "dash_distance": 5.0, "dashing_allowed": false, "make_transparent": false,
+            "show_pathing": true, "stop_on_energy_depleted": true,
+            "use_energy_potions": false, "adjust_interval": 500,
+            "waypoints": [
+                {"x":43,"y":296,"action":9,"clear_until":0},
+                {"x":24,"y":271,"action":13,"clear_until":5},
+                {"x":42,"y":250,"action":12,"clear_until":5},
+                {"x":68,"y":226,"action":12,"clear_until":25},
+                {"x":77,"y":189,"action":13,"clear_until":5},
+                {"x":83,"y":172,"action":12,"clear_until":37},
+                {"x":116,"y":148,"action":12,"clear_until":52},
+                {"x":130,"y":133,"action":14,"clear_until":0},
+                {"x":164,"y":97,"action":12,"clear_until":55},
+                {"x":188,"y":69,"action":12,"clear_until":80},
+                {"x":201,"y":56,"action":12,"clear_until":100}
+            ]
+        },
+        "KURZAN_FRONT_GATES": {
+            "image_path": "GATES", "bounding_point_x": 802, "bounding_point_y": 417,
+            "width": 360, "height": 172, "waypoint_accuracy": 5.0,
+            "dash_distance": 5.0, "dashing_allowed": false, "make_transparent": false,
+            "show_pathing": true, "stop_on_energy_depleted": true,
+            "use_energy_potions": false, "adjust_interval": 500,
+            "waypoints": [{"action":9,"clear_until":0,"x":325,"y":133},{"action":13,"clear_until":2,"x":316,"y":103},{"action":13,"clear_until":2,"x":309,"y":87},{"action":13,"clear_until":2,"x":308,"y":76},{"action":13,"clear_until":2,"x":309,"y":59},{"action":13,"clear_until":2,"x":300,"y":39},{"action":12,"clear_until":6,"x":282,"y":22},{"x":249,"y":25,"action":13,"clear_until":2},{"x":219,"y":32,"action":12,"clear_until":11},{"x":187,"y":37,"action":13,"clear_until":3},{"x":170,"y":39,"action":12,"clear_until":20},{"x":151,"y":43,"action":13,"clear_until":3},{"x":130,"y":46,"action":13,"clear_until":3},{"x":115,"y":50,"action":13,"clear_until":3},{"x":90,"y":51,"action":13,"clear_until":3},{"x":67,"y":56,"action":13,"clear_until":2},{"x":32,"y":63,"action":12,"clear_until":100}]
+        },
+        "KURZAN_FRONT_VOLCANO": {
+            "image_path": "KURZAN_FRONT_VOLCANO", "bounding_point_x": 813, "bounding_point_y": 347,
+            "width": 316, "height": 191, "waypoint_accuracy": 5.0,
+            "dash_distance": 5.0, "dashing_allowed": false, "make_transparent": false,
+            "show_pathing": true, "stop_on_energy_depleted": true,
+            "use_energy_potions": false, "adjust_interval": 500,
+            "waypoints": [{"x":293,"y":126,"action":9,"clear_until":0},{"x":268,"y":120,"action":13,"clear_until":10},{"x":242,"y":114,"action":12,"clear_until":5},{"x":185,"y":101,"action":12,"clear_until":20},{"x":156,"y":102,"action":12,"clear_until":25},{"x":134,"y":90,"action":12,"clear_until":30},{"x":98,"y":73,"action":12,"clear_until":40},{"x":83,"y":81,"action":12,"clear_until":50},{"x":64,"y":75,"action":12,"clear_until":75},{"x":77,"y":93,"action":12,"clear_until":100}]
+        },
+        "KURZAN_FRONT_RUINS": {
+            "image_path": "KURZAN_FRONT_RUINS", "bounding_point_x": 767, "bounding_point_y": 296,
+            "width": 402, "height": 335, "waypoint_accuracy": 5.0,
+            "dash_distance": 5.0, "dashing_allowed": false, "make_transparent": false,
+            "show_pathing": true, "stop_on_energy_depleted": true,
+            "use_energy_potions": false, "adjust_interval": 500,
+            "waypoints": [{"action":9,"clear_until":0,"x":24,"y":309},{"x":55,"y":280,"action":13,"clear_until":5},{"x":91,"y":257,"action":13,"clear_until":5},{"x":124,"y":245,"action":12,"clear_until":5},{"x":167,"y":219,"action":12,"clear_until":10},{"x":211,"y":188,"action":12,"clear_until":15},{"x":259,"y":140,"action":12,"clear_until":20},{"x":289,"y":111,"action":12,"clear_until":25},{"x":312,"y":87,"action":12,"clear_until":50},{"x":333,"y":60,"action":12,"clear_until":60},{"x":330,"y":87,"action":12,"clear_until":100}]
+        },
+        "KURZAN_FRONT_CLIFFS": {
+            "image_path": "KURZAN_FRONT_CLIFFS", "bounding_point_x": 756, "bounding_point_y": 294,
+            "width": 368, "height": 364, "waypoint_accuracy": 7.0,
+            "dash_distance": 5.0, "dashing_allowed": false, "make_transparent": false,
+            "show_pathing": true, "stop_on_energy_depleted": true,
+            "use_energy_potions": false, "adjust_interval": 500,
+            "waypoints": [{"x":328,"y":343,"action":9,"clear_until":0},{"x":341,"y":294,"action":12,"clear_until":5},{"x":335,"y":241,"action":12,"clear_until":10},{"x":304,"y":200,"action":12,"clear_until":15},{"x":273,"y":153,"action":12,"clear_until":25},{"x":223,"y":105,"action":12,"clear_until":35},{"x":148,"y":35,"action":12,"clear_until":45},{"x":108,"y":55,"action":12,"clear_until":50},{"x":74,"y":88,"action":12,"clear_until":100}]
+        },
+        "KURZAN_FRONT_GRAS": {
+            "image_path": "KURZAN_FRONT_GRAS", "bounding_point_x": 817, "bounding_point_y": 305,
+            "width": 248, "height": 403, "waypoint_accuracy": 7.0,
+            "dash_distance": 5.0, "dashing_allowed": false, "make_transparent": false,
+            "show_pathing": true, "stop_on_energy_depleted": true,
+            "use_energy_potions": false, "adjust_interval": 500,
+            "waypoints": [{"x":204,"y":371,"action":9,"clear_until":0},{"x":211,"y":354,"action":13,"clear_until":5},{"x":219,"y":325,"action":12,"clear_until":6},{"x":211,"y":286,"action":12,"clear_until":13},{"x":199,"y":248,"action":12,"clear_until":20},{"x":176,"y":203,"action":12,"clear_until":30},{"x":152,"y":158,"action":12,"clear_until":40},{"x":113,"y":117,"action":12,"clear_until":50},{"x":61,"y":66,"action":12,"clear_until":100}]
+        },
+        "KURZAN_FRONT_DICK": {
+            "image_path": "KURZAN_FRONT_DICK", "bounding_point_x": 842, "bounding_point_y": 293,
+            "width": 234, "height": 399, "waypoint_accuracy": 7.0,
+            "dash_distance": 5.0, "dashing_allowed": false, "make_transparent": false,
+            "show_pathing": true, "stop_on_energy_depleted": true,
+            "use_energy_potions": false, "adjust_interval": 500,
+            "waypoints": [{"x":181,"y":384,"action":9,"clear_until":0},{"x":203,"y":346,"action":13,"clear_until":5},{"x":191,"y":298,"action":12,"clear_until":20},{"x":177,"y":261,"action":12,"clear_until":30},{"x":160,"y":223,"action":12,"clear_until":35},{"x":130,"y":160,"action":12,"clear_until":45},{"x":64,"y":68,"action":12,"clear_until":100}]
+        }
+    }

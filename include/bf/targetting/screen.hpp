@@ -2,6 +2,7 @@
 
 #include "loa/core/types.hpp"
 #include <chrono>
+#include <functional>
 #include <mutex>
 #include <string>
 
@@ -28,9 +29,17 @@ public:
     bool attach_window(const std::string& title_substring);
     void* window_handle() const noexcept { return hwnd_; }
 
-    /// DAT_1405e0e52: true for local Lost Ark window (enables PrintWindow black-frame retry).
-    void set_is_local_game_window(bool is_local) noexcept { is_local_game_window_ = is_local; }
-    bool is_local_game_window() const noexcept { return is_local_game_window_; }
+    /// Single source of truth for `DAT_1405e0e52` (`0x1403500c0`):
+    /// `true` when window title contains "GeForce" or "Cloud Gaming Service" (enables PrintWindow black-frame retry),
+    /// `false` for local Lost Ark or remote stream_bridge.
+    static void set_is_local_game_window(bool flag) noexcept { loa::core::shared_dat_1405e0e52().store(flag); }
+    static bool is_local_game_window() noexcept { return loa::core::shared_dat_1405e0e52().load(); }
+
+    /// Test hooks for unit testing cache TTL, 10x black-frame retry, and remote validation without a live HWND.
+    using WindowCaptureHook = std::function<bool(loa::core::FrameBuffer& out_frame, int& out_w, int& out_h)>;
+    using RemoteFrameHook = std::function<bool(loa::core::FrameBuffer& out_frame)>;
+    void set_window_capture_hook(WindowCaptureHook hook) { window_capture_hook_ = std::move(hook); }
+    void set_remote_frame_hook(RemoteFrameHook hook) { remote_frame_hook_ = std::move(hook); }
 
     /// Optional Sunshine IPC stream_bridge for remote frame capture.
     void set_stream_bridge(const bf::streaming::stream_bridge* bridge) noexcept { stream_bridge_ = bridge; }
@@ -60,8 +69,9 @@ public:
 
 private:
     void* hwnd_ = nullptr;
-    bool is_local_game_window_ = true; // DAT_1405e0e52
     const bf::streaming::stream_bridge* stream_bridge_ = nullptr;
+    WindowCaptureHook window_capture_hook_;
+    RemoteFrameHook remote_frame_hook_;
 
     mutable std::mutex cache_mutex_;
     mutable loa::core::FrameBuffer cached_win_frame_;

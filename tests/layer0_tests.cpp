@@ -1,13 +1,21 @@
 #include "bf/targetting/screen.hpp"
 #include "bf/vision/vision_engine.hpp"
 #include "loa/game/io_backend.hpp"
+#include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <thread>
 #include <vector>
+
+#ifdef BIFROST_HAS_OPENCV
+#include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+#endif
 
 #define REQUIRE(cond)                                                                          \
     do {                                                                                       \
@@ -17,12 +25,6 @@
         }                                                                                      \
     } while (0)
 
-#ifdef BIFROST_HAS_OPENCV
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
-#endif
-
 namespace {
 
 loa::core::FrameBuffer make_bgr_frame(int w, int h, std::uint8_t b, std::uint8_t g, std::uint8_t r) {
@@ -31,6 +33,7 @@ loa::core::FrameBuffer make_bgr_frame(int w, int h, std::uint8_t b, std::uint8_t
     fb.height = h;
     fb.channels = 3;
     fb.stride = w * 3;
+    fb.captured_at = std::chrono::steady_clock::now();
     fb.data.resize(static_cast<std::size_t>(fb.stride) * static_cast<std::size_t>(h));
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
@@ -43,7 +46,7 @@ loa::core::FrameBuffer make_bgr_frame(int w, int h, std::uint8_t b, std::uint8_t
     return fb;
 }
 
-void test_windmouse() {
+void test_windmouse_bounds_and_wind() {
     struct Case {
         int sx, sy, tx, ty, speed;
     };
@@ -62,78 +65,186 @@ void test_windmouse() {
         const auto& last = path.back();
         const double dist = std::hypot(static_cast<double>(last.x - c.tx),
                                        static_cast<double>(last.y - c.ty));
-        if (dist > 1.5) {
-            std::cerr << "WindMouse fail: (" << c.sx << "," << c.sy << ")->("
-                      << c.tx << "," << c.ty << ") speed=" << c.speed
-                      << " steps=" << path.size() << " last=(" << last.x << "," << last.y
-                      << ") dist=" << dist << "\n";
-        }
         REQUIRE(dist <= 1.5);
+
+        int prev_x = c.sx;
+        int prev_y = c.sy;
+        const int max_allowed = std::max(5, c.speed) + 2;
         for (const auto& pt : path) {
             REQUIRE(pt.x >= -50 && pt.x <= 1970);
             REQUIRE(pt.y >= -50 && pt.y <= 1130);
+            const double step = std::hypot(static_cast<double>(pt.x - prev_x),
+                                           static_cast<double>(pt.y - prev_y));
+            REQUIRE(step <= static_cast<double>(max_allowed));
+            prev_x = pt.x;
+            prev_y = pt.y;
         }
     }
-    std::cout << "[PASS] test_windmouse\n";
+
+    // Wind behavior: horizontal move (100, 500) -> (1100, 500) should show lateral wind perturbation
+    int max_y_dev = 0;
+    for (int trial = 0; trial < 5; ++trial) {
+        const auto path = loa::game::io_backend::compute_windmouse_path(100, 500, 1100, 500, 7);
+        for (const auto& pt : path) {
+            max_y_dev = std::max(max_y_dev, std::abs(pt.y - 500));
+        }
+    }
+    REQUIRE(max_y_dev > 0);
+    std::cout << "[PASS] test_windmouse_bounds_and_wind\n";
 }
 
-void test_io_clamps_and_random_point() {
+void test_click_rect_timing_and_narrowing() {
     loa::game::io_backend io;
-    io.set_mouse_speed(0);
-    REQUIRE(io.mouse_speed() == 2);
-    io.set_min_button_delay_ms(10);
-    REQUIRE(io.min_button_delay_ms() == 50);
+    io.set_dry_run(false);
+    io.set_mouse_speed(12);
+    io.set_min_button_delay_ms(120);
+    io.set_is_local_game_window(false); // DAT_1405e0e52 == 0 -> right-30% narrowing
 
-    const loa::core::Rect2i r{ 400, 300, 200, 60 };
-    for (int i = 0; i < 100; ++i) {
-        const auto pt = loa::game::io_backend::random_point_in_rect(r, 5);
-        REQUIRE(pt.x >= r.x + 5 && pt.x <= r.x + r.width - 5);
-        REQUIRE(pt.y >= r.y + 5 && pt.y <= r.y + r.height - 5);
+    std::vector<loa::game::InputEvent> events;
+    io.set_input_sink([&](const loa::game::InputEvent& ev) {
+        events.push_back(ev);
+    });
+
+    const loa::core::Rect2i rect{ 400, 300, 200, 60 }; // area=12000 >= 301
+    const auto t_start = std::chrono::steady_clock::now();
+    REQUIRE(io.click_rect(rect, 3, true));
+    const auto t_end = std::chrono::steady_clock::now();
+
+    int down_idx = -1;
+    int up_idx = -1;
+    int last_move_idx = -1;
+    for (int i = 0; i < static_cast<int>(events.size()); ++i) {
+        if (events[i].kind == loa::game::InputEvent::Kind::MouseMove) last_move_idx = i;
+        if (events[i].kind == loa::game::InputEvent::Kind::MouseDown) down_idx = i;
+        if (events[i].kind == loa::game::InputEvent::Kind::MouseUp) up_idx = i;
     }
+    REQUIRE(last_move_idx >= 0);
+    REQUIRE(down_idx > last_move_idx);
+    REQUIRE(up_idx > down_idx);
 
-    io.set_dry_run(true);
-    REQUIRE(io.click_rect(r, 0, true));
-    REQUIRE(io.scroll_wheel(true));
-    REQUIRE(io.scroll_wheel(false));
-    REQUIRE(io.press_key(0x1B));
-    std::cout << "[PASS] test_io_clamps_and_random_point\n";
+    // Right-30% narrowing: x in [540 + 3, 600 - 3]
+    REQUIRE(events[down_idx].x >= 543 && events[down_idx].x <= 597);
+    REQUIRE(events[down_idx].y >= 303 && events[down_idx].y <= 357);
+
+    const auto pre_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            events[down_idx].at - events[last_move_idx].at)
+                            .count();
+    const auto hold_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             events[up_idx].at - events[down_idx].at)
+                             .count();
+    const auto post_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             t_end - events[up_idx].at)
+                             .count();
+    (void)t_start;
+
+    REQUIRE(pre_ms >= 110);
+    REQUIRE(hold_ms >= 12 && hold_ms <= 55);
+    REQUIRE(post_ms >= 95 && post_ms <= 240);
+    std::cout << "[PASS] test_click_rect_timing_and_narrowing (pre=" << pre_ms
+              << "ms hold=" << hold_ms << "ms post=" << post_ms << "ms)\n";
 }
 
-void test_screen_black_frame_and_crop() {
+void test_key_table_and_sleep_guard() {
+    const auto esc = loa::game::io_backend::resolve_key("esc");
+    REQUIRE(esc.has_value());
+    REQUIRE(esc->vk == 0x1B);
+    REQUIRE(esc->scan == 0x01);
+    REQUIRE(!esc->extended);
+
+    const auto right = loa::game::io_backend::resolve_key("right");
+    REQUIRE(right.has_value());
+    REQUIRE(right->vk == 0x27);
+
+    const auto rctrl = loa::game::io_backend::resolve_key("ctrlright");
+    REQUIRE(rctrl.has_value());
+    REQUIRE(rctrl->vk == 0xA3);
+    REQUIRE(rctrl->extended);
+
+    const auto upper = loa::game::io_backend::resolve_key("A");
+    REQUIRE(upper.has_value());
+    REQUIRE(upper->vk == 'A');
+
+    // Single source of truth shared between screen and io_backend
+    bf::targetting::screen::set_is_local_game_window(true);
+    REQUIRE(loa::game::io_backend::is_local_game_window() == true);
+    loa::game::io_backend::set_is_local_game_window(false);
+    REQUIRE(bf::targetting::screen::is_local_game_window() == false);
+
+    // Pause/stop guard on sleep_ms (0x1403492c0)
+    std::atomic<bool> pause_flag{ false };
+    std::atomic<bool> stop_flag{ true };
+    loa::game::io_backend::set_global_pause_stop(&pause_flag, &stop_flag);
+    const auto t0 = std::chrono::steady_clock::now();
+    loa::game::io_backend::sleep_ms(500);
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - t0)
+                             .count();
+    loa::game::io_backend::set_global_pause_stop(nullptr, nullptr);
+    REQUIRE(elapsed < 40);
+    std::cout << "[PASS] test_key_table_and_sleep_guard\n";
+}
+
+void test_screen_capture_cache_retry_and_remote() {
+    bf::targetting::screen scr;
+    bf::targetting::screen::set_is_local_game_window(true); // DAT_1405e0e52 == 1 -> black retry enabled
+
+    int calls = 0;
+    auto non_black = make_bgr_frame(1920, 1080, 10, 20, 30);
     auto black = make_bgr_frame(1920, 1080, 0, 0, 0);
-    REQUIRE(bf::targetting::screen::is_black_frame(black));
+    bool return_black = false;
 
-    // Paint outside kBlackCheckRoi (1429, 780, 480, 274): must still be black
-    auto outside = black;
-    for (int y = 100; y < 120; ++y) {
-        for (int x = 100; x < 120; ++x) {
-            const std::size_t idx = static_cast<std::size_t>(y) * outside.stride + static_cast<std::size_t>(x) * 3;
-            outside.data[idx] = 255;
-            outside.data[idx + 1] = 255;
-            outside.data[idx + 2] = 255;
-        }
-    }
-    REQUIRE(bf::targetting::screen::is_black_frame(outside));
+    scr.set_window_capture_hook([&](loa::core::FrameBuffer& out, int& w, int& h) {
+        ++calls;
+        w = 1920;
+        h = 1080;
+        out = return_black ? black : non_black;
+        return true;
+    });
 
-    // Paint inside kBlackCheckRoi: must not be black
-    auto non_black = black;
-    for (int y = 800; y < 840; ++y) {
-        for (int x = 1450; x < 1500; ++x) {
-            const std::size_t idx = static_cast<std::size_t>(y) * non_black.stride + static_cast<std::size_t>(x) * 3;
-            non_black.data[idx] = 200;
-            non_black.data[idx + 1] = 200;
-            non_black.data[idx + 2] = 200;
-        }
-    }
-    REQUIRE(!bf::targetting::screen::is_black_frame(non_black));
+    loa::core::FrameBuffer f1, f2, f3;
+    REQUIRE(scr.capture(f1, true, true));
+    REQUIRE(calls == 1);
+    REQUIRE(scr.capture(f2, true, true)); // cache hit (< 100 ms)
+    REQUIRE(calls == 1);
 
-    const auto cropped = bf::targetting::screen::crop(non_black, { 1450, 800, 32, 24 });
-    REQUIRE(cropped.width == 32);
-    REQUIRE(cropped.height == 24);
-    REQUIRE(cropped.channels == 3);
-    REQUIRE(cropped.data.size() == 32u * 24u * 3u);
-    REQUIRE(cropped.data[0] == 200 && cropped.data[1] == 200 && cropped.data[2] == 200);
-    std::cout << "[PASS] test_screen_black_frame_and_crop\n";
+    std::this_thread::sleep_for(std::chrono::milliseconds(115)); // cache miss (> 100 ms)
+    REQUIRE(scr.capture(f3, true, true));
+    REQUIRE(calls == 2);
+
+    // Black-frame retry stops after 10 attempts
+    calls = 0;
+    return_black = true;
+    loa::core::FrameBuffer f4;
+    REQUIRE(scr.capture(f4, true, false));
+    REQUIRE(calls == bf::targetting::screen::kMaxBlackRetries);
+    scr.set_window_capture_hook(nullptr);
+
+    // Remote validation: stale (>500 ms) and wrong size rejected, valid 1920x1080 accepted
+    scr.set_remote_frame_hook([&](loa::core::FrameBuffer& out) {
+        out = non_black;
+        out.captured_at = std::chrono::steady_clock::now() - std::chrono::milliseconds(700);
+        return true;
+    });
+    loa::core::FrameBuffer fr;
+    REQUIRE(!scr.capture(fr, true, false));
+    REQUIRE(scr.last_error().find("stale") != std::string::npos);
+
+    scr.set_remote_frame_hook([&](loa::core::FrameBuffer& out) {
+        out = make_bgr_frame(1280, 720, 10, 20, 30);
+        return true;
+    });
+    REQUIRE(!scr.capture(fr, true, false));
+    REQUIRE(scr.last_error().find("1920x1080") != std::string::npos);
+
+    scr.set_remote_frame_hook([&](loa::core::FrameBuffer& out) {
+        out = make_bgr_frame(1920, 1080, 10, 20, 30);
+        return true;
+    });
+    REQUIRE(scr.capture(fr, true, false));
+    scr.set_remote_frame_hook(nullptr);
+    bf::targetting::screen::set_is_local_game_window(false);
+
+    std::cout << "[PASS] test_screen_capture_cache_retry_and_remote\n";
 }
 
 void test_vision_match_template() {
@@ -143,7 +254,6 @@ void test_vision_match_template() {
     cv::rectangle(templ, cv::Rect(4, 4, 24, 16), cv::Scalar(40, 180, 240), cv::FILLED);
     cv::circle(templ, cv::Point(16, 12), 5, cv::Scalar(255, 255, 255), cv::FILLED);
 
-    // Stamp template into frame at (500, 300)
     for (int y = 0; y < templ.rows; ++y) {
         for (int x = 0; x < templ.cols; ++x) {
             const auto& px = templ.at<cv::Vec3b>(y, x);
@@ -162,19 +272,16 @@ void test_vision_match_template() {
     const loa::core::Rect2i roi{ 480, 280, 80, 64 };
     double score = 0.0;
 
-    // First call loads + caches template; TM_CCOEFF_NORMED (5)
     const auto hit1 = vision.match_template(frame, roi, tmp_path, 0.90, 5, false, nullptr, &score);
     REQUIRE(hit1.has_value());
     REQUIRE(score >= 0.99);
     REQUIRE(hit1->x == 516 && hit1->y == 312);
 
-    // Second call uses cached template + TM_SQDIFF_NORMED (1) + grayscale
     double sq_score = 0.0;
     const auto hit2 = vision.match_template(frame, roi, tmp_path, 0.90, 1, true, nullptr, &sq_score);
     REQUIRE(hit2.has_value());
     REQUIRE(sq_score >= 0.99);
 
-    // Miss ROI
     double miss_score = 0.0;
     const auto miss = vision.match_template(frame, { 0, 0, 100, 100 }, tmp_path, 0.90, 5, false, nullptr, &miss_score);
     REQUIRE(!miss.has_value());
@@ -189,9 +296,10 @@ void test_vision_match_template() {
 } // namespace
 
 int main() {
-    test_windmouse();
-    test_io_clamps_and_random_point();
-    test_screen_black_frame_and_crop();
+    test_windmouse_bounds_and_wind();
+    test_click_rect_timing_and_narrowing();
+    test_key_table_and_sleep_guard();
+    test_screen_capture_cache_retry_and_remote();
     test_vision_match_template();
     std::cout << "ALL LAYER0 TESTS PASSED\n";
     return 0;

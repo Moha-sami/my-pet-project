@@ -124,7 +124,7 @@ bool game_menu::open_character_switch_menu(const std::atomic<bool>& stop_flag) {
     const auto open_start = std::chrono::steady_clock::now();
     while (!stop_flag.load()) {
         if (is_open()) break;
-        io_.press_key(0x1B, 40); // VK_ESCAPE
+        io_.press_key(0x1B); // VK_ESCAPE
         if (!wait_ms(800, stop_flag)) return false;
         const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                     std::chrono::steady_clock::now() - open_start)
@@ -136,7 +136,7 @@ bool game_menu::open_character_switch_menu(const std::atomic<bool>& stop_flag) {
     // Click "Switch Characters" (432, 682, 210, 32) and poll find_connected_row up to 30s (0x14038d850)
     const auto switch_start = std::chrono::steady_clock::now();
     while (!stop_flag.load()) {
-        io_.click_rect(kSwitchCharsBtn, 0, true);
+        io_.click_rect(kSwitchCharsBtn, 3, true); // pad=3 @ 0x14038af20
         if (io_.dry_run()) return wait_ms(200, stop_flag);
         if (find_connected_row(stop_flag) >= 0) return true;
         const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -209,7 +209,7 @@ bool game_menu::select_connect_button_for(int roster_slot_index,
     const auto start = std::chrono::steady_clock::now();
     bool highlighted = false;
     while (!stop_flag.load()) {
-        io_.click_rect(slot_rect, 0, true);
+        io_.click_rect(slot_rect, 5, true); // pad=5 @ 0x14038af20
         if (!wait_ms(500, stop_flag)) return false;
 
         if (io_.dry_run()) {
@@ -304,7 +304,7 @@ bool game_menu::switch_to(int roster_slot_index,
 
         const auto since_click_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_click).count();
         if (since_click_ms >= 10000) {
-            io_.click_rect(kConnectBtn, 0, true);
+            io_.click_rect(kConnectBtn, 3, true); // pad=3 @ 0x14038af20
             if (!wait_ms(400, stop_flag)) return false;
             io_.press_key(0x0D); // VK_RETURN ("enter" @ 0x140391180)
             last_click = std::chrono::steady_clock::now();

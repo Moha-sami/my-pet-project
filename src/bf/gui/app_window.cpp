@@ -520,6 +520,15 @@ int app_window::run(const GuiConfig& cfg, std::atomic<bool>& stop_flag) {
 
             if (attached && scr.window_handle()) {
                 HWND target_wnd = static_cast<HWND>(scr.window_handle());
+                RECT wrc{};
+                ::GetWindowRect(target_wnd, &wrc);
+                const int ww = wrc.right - wrc.left;
+                const int wh = wrc.bottom - wrc.top;
+                if (ww != bf::targetting::screen::kExpectedWidth ||
+                    wh != bf::targetting::screen::kExpectedHeight) {
+                    ui.append_log("ERR: Target window rect is " + std::to_string(ww) + "x" +
+                                  std::to_string(wh) + ", expected 1920x1080.");
+                }
                 RECT trc{};
                 ::GetClientRect(target_wnd, &trc);
                 const DWORD fg_tid = ::GetWindowThreadProcessId(::GetForegroundWindow(), nullptr);

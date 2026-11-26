@@ -115,3 +115,22 @@ All 5 `RT_RCDATA` resources extracted directly from `Bifrost.exe` `.rsrc`:
 - **Remaining `[INFERRED]` items**:
   1. `DAT_1405e0e52` UI setting name (`"local/remote"` or `"aspect/click-narrow"` toggle): exact behavior in `0x14035dae0` (right-30% rect narrowing when `0`) and `0x140354340` (black-frame retry when `1`) is `[CONFIRMED]`, while its human-readable config key name is `[INFERRED]` until `0x1403500c0` / `0x140279470` (settings module) is decompiled.
 - **Unaccounted functions in range**: 0.
+
+---
+
+## UI Rect & Pad Table (`0x14038af20`, `game_menu` ctor) `[CONFIRMED from decompile @ 0x14038af20]`
+
+`FUN_14035d600(dst, x, y, w, h, pad)` constructs each clickable rect with an inset `pad` passed to `click_rect`:
+
+| # | Struct Offset | Rect `(x, y, w, h)` | `pad` | Role |
+|---|---|---|---|---|
+| 1 | `+0x50` | `(1063, 675, 24, 30)` | `3` | Exit / Game Menu icon (`0x427, 0x2a3, 0x18, 0x1e`) |
+| 2 | `+0x64` | `(1128, 678, 28, 28)` | `3` | Settings / Aux icon (`0x468, 0x2a6, 0x1c, 0x1c`) |
+| 3 | `+0x78` | `(432, 682, 210, 32)` | `3` | `kSwitchCharsBtn` (`0x1b0, 0x2aa, 0xd2, 0x20`) |
+| 4 | `+0x8c` | `(432, 645, 210, 32)` | `3` | Alt Switch Characters rect (`0x1b0, 0x285, 0xd2, 0x20`) |
+| 5 | `+0xa0` | `(983, 686, 95, 23)` | `3` | `kConnectBtn` (`0x3d7, 0x2ae, 0x5f, 0x17`) |
+| 6 | `+0xb4` | `(1263, 389, 9, 9)` | `3` | Scrollbar up arrow (`0x4ef, 0x185, 9, 9`) |
+| 7 | `+0xc8` | `(1263, 636, 8, 8)` | `3` | Scrollbar down arrow (`0x4ef, 0x27c, 8, 8`) |
+| 8 | `+0xdc` | `(1263, 399, 8, 234)` | `0` | `kScrollbarTrack` (raw fields, no `FUN_14035d600`) |
+| 9–17 | `+0xec .. +0x18c` | 3x3 grid `(kSlotColX[c], kSlotRowY[r], 184, 49)` | `5` | 9 character slot rects (`0xb8, 0x31, 5`) |
+| 18–19 | `0x140352340` | `(0, 132, 225, 720)`, `(1673, 191, 233, 677)` | `0` | Loading-screen black ROIs (non-clickable) |

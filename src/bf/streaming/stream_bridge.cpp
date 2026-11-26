@@ -13,6 +13,8 @@ namespace bf::streaming {
 
 namespace {
 
+// [INFERRED] Named-pipe / shared-memory IPC layout for external stream helper
+// (not recovered from Bifrost.exe; Bifrost.exe uses an in-process stream vtable at DAT_14059e690).
 constexpr std::size_t kImageBytes = static_cast<std::size_t>(stream_bridge::kStreamWidth) *
                                     stream_bridge::kStreamHeight * 3;
 

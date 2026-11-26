@@ -6,8 +6,9 @@
 
 namespace bf::streaming {
 
-/// Client bridge for `BifrostStream.exe` (`sources/bifrost-stream/ipc.h`)
-/// and `bf::sunshine_backend` (0x1402740e0).
+/// [INFERRED] Client bridge for `BifrostStream.exe` (`sources/bifrost-stream/ipc.h`)
+/// and `bf::sunshine_backend` (0x1402740e0). IPC protocol & wheel/cursor extensions
+/// are [INFERRED], not recovered from Bifrost.exe.
 class stream_bridge {
 public:
     static constexpr int kStreamWidth = 1920;

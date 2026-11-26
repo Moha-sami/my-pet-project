@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -18,6 +19,27 @@ enum class MouseButton {
     Left,
     Right,
     Middle
+};
+
+/// Resolved key entry from `0x14034db70` (`DAT_1405e2430` + `MapVirtualKeyA(vk, 4)`).
+struct ResolvedKey {
+    std::uint16_t vk = 0;
+    std::uint16_t scan = 0;
+    bool shift = false;
+    bool ctrl = false;
+    bool alt = false;
+    bool extended = false;
+};
+
+/// Test event emitted when `InputSink` is installed (non-dry-run timing/narrowing verification).
+struct InputEvent {
+    enum class Kind { MouseMove, MouseDown, MouseUp, Wheel, KeyDown, KeyUp };
+    Kind kind = Kind::MouseMove;
+    int x = 0;
+    int y = 0;
+    int code = 0;
+    int flags = 0;
+    std::chrono::steady_clock::time_point at{};
 };
 
 /// Win32 input abstraction recovered from `0x140353460`, `0x14035dae0`, `0x140358f40`,
@@ -42,8 +64,13 @@ public:
     void set_min_button_delay_ms(int ms) noexcept { min_button_delay_ms_ = ms < 50 ? 50 : ms; }
     int min_button_delay_ms() const noexcept { return min_button_delay_ms_; }
 
-    void set_is_local_game_window(bool is_local) noexcept { is_local_game_window_ = is_local; }
-    bool is_local_game_window() const noexcept { return is_local_game_window_; }
+    /// Single source of truth for `DAT_1405e0e52` (`0x1403500c0`), shared with `screen`.
+    static void set_is_local_game_window(bool flag) noexcept { loa::core::shared_dat_1405e0e52().store(flag); }
+    static bool is_local_game_window() noexcept { return loa::core::shared_dat_1405e0e52().load(); }
+
+    /// Optional test sink replacing OS SendInput/GetCursorPos in non-dry-run tests.
+    using InputSink = std::function<void(const InputEvent&)>;
+    void set_input_sink(InputSink sink) { input_sink_ = std::move(sink); }
 
     /// Load `mouse_speed` and `min_button_delay` from general.json.
     bool load_settings_from_json(const std::string& general_json_path);
@@ -76,8 +103,14 @@ public:
     /// Scroll mouse wheel (`0x14034f730`), honoring `dry_run`, `stream_bridge`, and pause/stop.
     bool scroll_wheel(bool up) const;
 
-    /// Press and release a virtual-key code via KEYEVENTF_SCANCODE (`0x14034ecf0`).
-    /// When `hold_ms < 0`, uses `150..200 ms` for VK_ESCAPE and `50..100 ms` otherwise.
+    /// Resolve a key name via the 121-entry special table (`0x14001a8d0`), ASCII `VkKeyScanA` (`0x14034e0b0`),
+    /// and `MapVirtualKeyA(vk, 4)` (`0x14034db70`).
+    static std::optional<ResolvedKey> resolve_key(const std::string& key_name);
+    static ResolvedKey resolve_vk(std::uint16_t vk_code);
+
+    /// Press and release a key by name (`0x14034ecf0`) or VK code via KEYEVENTF_SCANCODE.
+    /// When `hold_ms < 0`, uses `150..200 ms` for esc/VK_ESCAPE and `50..100 ms` otherwise.
+    bool press_key(const std::string& key_name, int hold_ms = -1) const;
     bool press_key(std::uint16_t vk_code, int hold_ms = -1) const;
 
     /// Press and release a virtual-key code with an optional modifier (`0x14034f460`).
@@ -99,8 +132,8 @@ private:
     bool dry_run_ = false;
     int mouse_speed_ = kDefaultMouseSpeed;          // DAT_14059f5e0
     int min_button_delay_ms_ = kDefaultMinButtonDelay; // DAT_14059f5d8
-    bool is_local_game_window_ = true;              // DAT_1405e0e52
     const bf::streaming::stream_bridge* stream_bridge_ = nullptr;
+    InputSink input_sink_;
 };
 
 } // namespace loa::game

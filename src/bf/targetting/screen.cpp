@@ -19,6 +19,7 @@ namespace {
 struct EnumContext {
     std::string needle_lower;
     HWND found = nullptr;
+    std::string matched_title;
 };
 
 std::string to_lower_ascii(std::string s) {
@@ -37,9 +38,11 @@ BOOL CALLBACK enum_windows_cb(HWND hwnd, LPARAM lparam) {
         return TRUE;
     }
     auto* ctx = reinterpret_cast<EnumContext*>(lparam);
-    const std::string title_lower = to_lower_ascii(std::string(buf, static_cast<std::size_t>(len)));
+    const std::string title(buf, static_cast<std::size_t>(len));
+    const std::string title_lower = to_lower_ascii(title);
     if (title_lower.find(ctx->needle_lower) != std::string::npos) {
         ctx->found = hwnd;
+        ctx->matched_title = title;
         return FALSE;
     }
     return TRUE;
@@ -155,10 +158,17 @@ bool capture_window_printwindow_bgr(HWND hwnd, loa::core::FrameBuffer& out_frame
 
 } // namespace
 
+// Recovered from FUN_1403500c0 (0x1403500c0): sets DAT_1405e0e52 = 1 if matched title
+// contains "GeForce" or "Cloud Gaming Service", else 0.
 bool screen::attach_window(const std::string& title_substring) {
-    EnumContext ctx{ to_lower_ascii(title_substring), nullptr };
+    EnumContext ctx{ to_lower_ascii(title_substring), nullptr, {} };
     EnumWindows(enum_windows_cb, reinterpret_cast<LPARAM>(&ctx));
     hwnd_ = ctx.found;
+    const bool is_cloud_window =
+        hwnd_ != nullptr &&
+        (ctx.matched_title.find("GeForce") != std::string::npos ||
+         ctx.matched_title.find("Cloud Gaming Service") != std::string::npos);
+    loa::core::shared_dat_1405e0e52().store(is_cloud_window);
     return hwnd_ != nullptr;
 }
 
@@ -189,10 +199,14 @@ bool screen::is_black_frame(const loa::core::FrameBuffer& frame) {
 // Recovered from FUN_140354340 (0x140354340)
 bool screen::capture(loa::core::FrameBuffer& out_frame, bool use_window, bool use_cache) const {
     // Remote stream path (DAT_14059e690 != nullptr @ 0x140354340)
-    if (stream_bridge_ && stream_bridge_->is_connected()) {
+    // [INFERRED] stream_bridge IPC protocol; binary uses an in-process stream vtable at DAT_14059e690.
+    if (remote_frame_hook_ || (stream_bridge_ && stream_bridge_->is_connected())) {
         const auto start = std::chrono::steady_clock::now();
         while (true) {
-            if (stream_bridge_->read_frame(out_frame) && !out_frame.empty()) {
+            const bool got = remote_frame_hook_
+                ? remote_frame_hook_(out_frame)
+                : stream_bridge_->read_frame(out_frame);
+            if (got && !out_frame.empty()) {
                 const auto age_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                         std::chrono::steady_clock::now() - out_frame.captured_at)
                                         .count();
@@ -219,6 +233,35 @@ bool screen::capture(loa::core::FrameBuffer& out_frame, bool use_window, bool us
         }
     }
 
+    if (use_window && window_capture_hook_) {
+        std::lock_guard<std::mutex> lock(cache_mutex_);
+        const auto now = std::chrono::steady_clock::now();
+        if (use_cache && !cached_win_frame_.empty() &&
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - cached_win_at_).count() < kCacheTtlMs) {
+            out_frame = cached_win_frame_;
+            return true;
+        }
+        const bool check_black = loa::core::shared_dat_1405e0e52().load();
+        for (int attempt = 0; attempt < kMaxBlackRetries; ++attempt) {
+            int w = 0;
+            int h = 0;
+            if (!window_capture_hook_(cached_win_frame_, w, h)) {
+                return false;
+            }
+            if (w != kExpectedWidth || h != kExpectedHeight) {
+                last_error_ = "GetWindowRect is " + std::to_string(w) + "x" + std::to_string(h) +
+                              ", expected 1920x1080";
+                return false;
+            }
+            if (!check_black || !is_black_frame(cached_win_frame_)) {
+                break;
+            }
+        }
+        cached_win_at_ = std::chrono::steady_clock::now();
+        out_frame = cached_win_frame_;
+        return true;
+    }
+
     HWND hwnd = static_cast<HWND>(hwnd_);
     const bool try_window = use_window && hwnd && IsWindow(hwnd);
     if (try_window) {
@@ -241,11 +284,12 @@ bool screen::capture(loa::core::FrameBuffer& out_frame, bool use_window, bool us
                 return true;
             }
 
+            const bool check_black = loa::core::shared_dat_1405e0e52().load();
             for (int attempt = 0; attempt < kMaxBlackRetries; ++attempt) {
                 if (!capture_window_printwindow_bgr(hwnd, cached_win_frame_)) {
                     return false;
                 }
-                if (!is_local_game_window_ || !is_black_frame(cached_win_frame_)) {
+                if (!check_black || !is_black_frame(cached_win_frame_)) {
                     break;
                 }
             }

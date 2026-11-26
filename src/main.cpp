@@ -68,6 +68,15 @@ void print_usage() {
 
 int main(int argc, char** argv) {
 #ifdef _WIN32
+    // Per-Monitor v2 DPI awareness so GetWindowRect / BitBlt / SendInput use physical 1920x1080 coords.
+    // Note: Bifrost.exe itself has no DPI imports or manifest strings.
+    if (HMODULE u32 = ::GetModuleHandleA("user32.dll")) {
+        using SetDpiCtxFn = BOOL(WINAPI*)(HANDLE);
+        auto fn = reinterpret_cast<SetDpiCtxFn>(::GetProcAddress(u32, "SetProcessDpiAwarenessContext"));
+        if (!fn || !fn(reinterpret_cast<HANDLE>(static_cast<std::intptr_t>(-4)))) {
+            ::SetProcessDPIAware();
+        }
+    }
     if (argc > 1 && ::AttachConsole(ATTACH_PARENT_PROCESS)) {
         FILE* f_out = nullptr;
         FILE* f_err = nullptr;

@@ -35,6 +35,7 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#include <mmsystem.h>
 #endif
 
 namespace {
@@ -77,6 +78,10 @@ int main(int argc, char** argv) {
             ::SetProcessDPIAware();
         }
     }
+    struct TimerPeriodGuard {
+        TimerPeriodGuard() { timeBeginPeriod(1); }
+        ~TimerPeriodGuard() { timeEndPeriod(1); }
+    } timer_guard;
     if (argc > 1 && ::AttachConsole(ATTACH_PARENT_PROCESS)) {
         FILE* f_out = nullptr;
         FILE* f_err = nullptr;

@@ -15,8 +15,22 @@ base_interface::base_interface(std::string name,
       modifier_(std::move(modifier)),
       logger_(std::move(logger)) {}
 
-// Recovered from FUN_14035e840 (0x14035e840) + FUN_1401fd6d0 (0x1401fd6d0)
+// Recovered from FUN_14035e840 (0x14035e840) + FUN_1401fd6d0 (0x1401fd6d0) + FUN_140355de0 (0x140355de0)
 void base_interface::open() {
+    // Resolve hotkey & modifier up front so invalid key names fail immediately instead of spinning 60s.
+    const auto rk = loa::game::io_backend::resolve_key(hotkey_);
+    if (!rk.has_value()) {
+        throw std::invalid_argument("Unknown hotkey '" + hotkey_ + "' for interface '" + name_ + "'");
+    }
+    std::optional<loa::game::ResolvedKey> mk;
+    if (!modifier_.empty()) {
+        mk = loa::game::io_backend::resolve_key(modifier_);
+        if (!mk.has_value()) {
+            throw std::invalid_argument("Unknown modifier '" + modifier_ + "' for interface '" + name_ + "'");
+        }
+    }
+
+    // 0x14035e840 logs "Opening '{}'.." ONCE at entry before _Xtime_get_ticks() and is_open().
     if (logger_) {
         logger_("Opening '" + name_ + "'..");
     }
@@ -27,16 +41,13 @@ void base_interface::open() {
                                     std::chrono::steady_clock::now() - start)
                                     .count();
         if (elapsed_ms >= open_timeout_ms_) {
-            throw std::runtime_error("Failed to open interface '" + name_ + "' within timeout");
+            // 0x140355de0 -> 0x1404cc568 ("Failed to open {}!")
+            throw std::runtime_error("Failed to open " + name_ + "!");
         }
 
         // 0x14034f460: press hotkey with optional modifier
-        if (!modifier_.empty()) {
-            const auto rk = loa::game::io_backend::resolve_key(hotkey_);
-            const auto mk = loa::game::io_backend::resolve_key(modifier_);
-            if (rk.has_value() && mk.has_value()) {
-                io_.press_key_with_modifier(rk->vk, mk->vk);
-            }
+        if (mk.has_value()) {
+            io_.press_key_with_modifier(rk->vk, mk->vk);
         } else {
             io_.press_key(hotkey_);
         }

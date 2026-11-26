@@ -125,7 +125,8 @@ int main(int argc, char** argv) {
         loa::core::FrameBuffer frame;
         const bool ok = scr.capture(frame, true, false);
         const bool is_black = ok && bf::targetting::screen::is_black_frame(frame);
-        const std::filesystem::path png_path = std::filesystem::path(out_dir) / ("frame_" + std::to_string(i) + ".png");
+        const std::string rel_png = "frame_" + std::to_string(i) + ".png";
+        const std::filesystem::path png_path = std::filesystem::path(out_dir) / rel_png;
         const bool saved = ok && save_bgr_png(frame, png_path);
 
         log_line("frame[" + std::to_string(i) + "] ok=" + (ok ? "true" : "false") +
@@ -133,7 +134,7 @@ int main(int argc, char** argv) {
                  " black=" + (is_black ? "true" : "false") +
                  " size=" + std::to_string(frame.width) + "x" + std::to_string(frame.height) +
                  "x" + std::to_string(frame.channels) +
-                 " saved=" + (saved ? png_path.string() : "false") +
+                 " saved=" + (saved ? rel_png : "false") +
                  (ok ? "" : (" err=\"" + scr.last_error() + "\"")));
         if (ok && match_frame.empty()) {
             match_frame = frame;
@@ -213,6 +214,6 @@ int main(int argc, char** argv) {
     std::ofstream ofs(rep_path);
     ofs << report.str();
     ofs.close();
-    std::cout << "Wrote " << rep_path.string() << "\n";
+    std::cout << "Wrote " << rep_path.filename().string() << "\n";
     return 0;
 }

@@ -360,16 +360,31 @@ void test_base_interface_open() {
     REQUIRE(iface.is_open());
     REQUIRE(key_downs == 2);
 
-    // Timeout case throws std::runtime_error
+    // Timeout case throws std::runtime_error with "Failed to open <name>!" (0x140355de0)
     FakeInterface stuck("Stuck Menu", io, "esc");
     stuck.set_timeouts_for_test(120, 40, 15);
     bool threw = false;
     try {
         stuck.open();
-    } catch (const std::runtime_error&) {
-        threw = true;
+    } catch (const std::runtime_error& ex) {
+        threw = (std::string(ex.what()).find("Failed to open Stuck Menu!") != std::string::npos);
     }
     REQUIRE(threw);
+
+    // Unresolvable hotkey fails immediately without waiting 60s
+    FakeInterface bad_key("Bad Key", io, "no_such_key_xyz");
+    const auto t0 = std::chrono::steady_clock::now();
+    bool bad_threw = false;
+    try {
+        bad_key.open();
+    } catch (const std::invalid_argument&) {
+        bad_threw = true;
+    }
+    const auto bad_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now() - t0)
+                            .count();
+    REQUIRE(bad_threw);
+    REQUIRE(bad_ms < 50);
     std::cout << "[PASS] test_base_interface_open\n";
 }
 

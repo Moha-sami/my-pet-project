@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
         std::ofstream ofs(rep_path);
         ofs << report.str();
         ofs.close();
-        std::cout << "Wrote " << rep_path.string() << "\n";
+        std::cout << "Wrote " << rep_path.filename().string() << "\n";
     };
 
     log_line("=== BifrostMini Layer 0 Click Probe ===");
@@ -122,6 +122,32 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // Pre-click check: scan all 9 slot ROIs; if any already matches, abort without clicking.
+    constexpr int kSlotColX[3] = { 679, 874, 1069 };
+    constexpr int kSlotRowY[3] = { 419, 506, 595 };
+    bool already_open = false;
+    log_line("--- Pre-Click 9-Slot Scan ---");
+    for (int r = 0; r < 3; ++r) {
+        for (int c = 0; c < 3; ++c) {
+            const loa::core::Rect2i slot_roi{ kSlotColX[c] + 50, kSlotRowY[r] + 13, 85, 20 };
+            for (const char* tn : { "connected.png", "connecting.png" }) {
+                double sc = 0.0;
+                const bool hit = vision.match_template(
+                    before_frame, slot_roi, templates_dir + "/" + tn, 0.60, 5, false, nullptr, &sc).has_value();
+                std::ostringstream ss;
+                ss << "pre " << tn << "(" << r << "," << c << ") | score=" << std::fixed
+                   << std::setprecision(4) << sc << " | 0.60 | " << (hit ? "PASS" : "FAIL");
+                log_line(ss.str());
+                if (hit) already_open = true;
+            }
+        }
+    }
+    if (already_open) {
+        log_line("ABORT: grid already open; no click sent.");
+        write_report();
+        return 1;
+    }
+
     // Click ONLY kSwitchCharsBtn (432, 682, 210, 32) with pad=3 once
     constexpr loa::core::Rect2i kSwitchCharsBtn{ 432, 682, 210, 32 };
     loa::game::io_backend io;
@@ -140,10 +166,9 @@ int main(int argc, char** argv) {
              " elapsed_ms=" + std::to_string(click_elapsed_ms));
 
     // Poll up to 5 seconds for character grid (any of 9 slots matching connected/connecting)
-    constexpr int kSlotColX[3] = { 679, 874, 1069 };
-    constexpr int kSlotRowY[3] = { 419, 506, 595 };
     bool grid_appeared = false;
-    long long grid_ms = -1;
+    long long grid_from_end_ms = -1;
+    long long grid_from_start_ms = -1;
     int matched_r = -1, matched_c = -1;
     double matched_score = 0.0;
     std::string matched_tmpl;
@@ -151,9 +176,8 @@ int main(int argc, char** argv) {
 
     const auto poll_start = std::chrono::steady_clock::now();
     while (true) {
-        const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                 std::chrono::steady_clock::now() - poll_start)
-                                 .count();
+        const auto now = std::chrono::steady_clock::now();
+        const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - poll_start).count();
         if (scr.capture(after_frame, true, false) && !after_frame.empty()) {
             for (int r = 0; r < 3 && !grid_appeared; ++r) {
                 for (int c = 0; c < 3 && !grid_appeared; ++c) {
@@ -163,7 +187,10 @@ int main(int argc, char** argv) {
                         if (vision.match_template(after_frame, slot_roi, templates_dir + "/" + tn,
                                                   0.60, 5, false, nullptr, &sc).has_value()) {
                             grid_appeared = true;
-                            grid_ms = elapsed;
+                            grid_from_end_ms = elapsed;
+                            grid_from_start_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                                     now - t_click_start)
+                                                     .count();
                             matched_r = r;
                             matched_c = c;
                             matched_score = sc;
@@ -185,7 +212,8 @@ int main(int argc, char** argv) {
 
     if (grid_appeared) {
         std::ostringstream ss;
-        ss << "grid_appeared=true elapsed_ms=" << grid_ms
+        ss << "grid_appeared=true time_from_click_end_ms=" << grid_from_end_ms
+           << " time_from_click_start_ms=" << grid_from_start_ms
            << " slot=(" << matched_r << "," << matched_c << ")"
            << " template=" << matched_tmpl
            << " score=" << std::fixed << std::setprecision(4) << matched_score;
